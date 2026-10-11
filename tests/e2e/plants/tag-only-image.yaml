@@ -1,0 +1,22 @@
+# expect: require-image-digest
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-tag-only
+  namespace: demo
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault

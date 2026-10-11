@@ -2,3 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+patches:
+  # A volume Velero can back up on kind (see manifests/overlays/kind/storageclass.yaml).
+  - target:
+      kind: StatefulSet
+      name: backend
+    patch: |-
+      - op: add
+        path: /spec/volumeClaimTemplates/0/spec/storageClassName
+        value: kind-local

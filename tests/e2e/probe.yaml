@@ -1,0 +1,34 @@
+# A pod outside the demo tenant, used to try connections the demo's network
+# policies must refuse. It is a well-behaved pod in its own right (restricted
+# namespace, pinned image, limits), so a refusal is the network's doing.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: e2e-probe
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe
+  namespace: e2e-probe
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: probe
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      command: [sleep, "3600"]
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault

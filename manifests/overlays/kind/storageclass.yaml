@@ -1,0 +1,14 @@
+# kind's default class hands out hostPath volumes, and Velero's file-system
+# backup skips hostPath volumes without failing the backup: the restore then
+# brings back an empty disk. The same provisioner, told to make `local`
+# volumes, gives Velero something it can back up. Workloads whose data must
+# survive a restore on kind ask for this class (apps/demo/overlays/kind).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: kind-local
+  annotations:
+    defaultVolumeType: local
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete

@@ -1,0 +1,7 @@
+# expect: require-restricted-tenant
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: e2e-tenant-without-pss
+  labels:
+    platform.heyvaldemar.com/tenant: "true"

@@ -1,0 +1,17 @@
+# Refused by the API server's own Pod Security admission (the namespace
+# enforces restricted), before any Kyverno policy is asked.
+# expect: violates PodSecurity
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-privileged
+  namespace: demo
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}
+      securityContext:
+        privileged: true

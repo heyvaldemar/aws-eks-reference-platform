@@ -1,0 +1,24 @@
+# The control: a pod that satisfies every policy. If this one is refused, the
+# refusals below prove nothing, because something else is refusing everything.
+# expect: admitted
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-compliant
+  namespace: demo
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault

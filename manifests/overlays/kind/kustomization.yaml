@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - ../../base
   - secret-store.yaml
+  - storageclass.yaml
