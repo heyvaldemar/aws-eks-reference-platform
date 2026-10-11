@@ -26,7 +26,9 @@
 #   any @NAME@ the cluster file uses (eks: filled by the Makefile from
 #   terraform output)
 #
-# Re-running it is safe: every step is an upgrade or an apply.
+# Re-running it is safe, and is how a cluster moves to another revision:
+# Argo CD is not reinstalled, the cluster Secret and root Application are
+# re-applied with the new PLATFORM_REVISION.
 set -euo pipefail
 
 ENV="${1:?usage: bootstrap.sh kind|eks}"
@@ -67,12 +69,19 @@ kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 kubectl label namespace argocd --overwrite \
   pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/enforce-version=latest >/dev/null
 
-say "Argo CD chart $ARGOCD_CHART_VERSION"
-values=(-f "$ROOT/platform/values/argo-cd/images.yaml" -f "$ROOT/platform/values/argo-cd/common.yaml")
-[ -f "$ROOT/platform/values/argo-cd/$ENV.yaml" ] && values+=(-f "$ROOT/platform/values/argo-cd/$ENV.yaml")
-helm upgrade --install argocd argo-cd \
-  --repo https://argoproj.github.io/argo-helm --version "$ARGOCD_CHART_VERSION" \
-  --namespace argocd "${values[@]}" --wait --timeout 10m
+# Once installed, Argo CD manages its own release through
+# platform/appsets/argo-cd.yaml; a second Helm install would fight it for the
+# same fields. A re-run only moves the cluster to a new revision (steps 3-4).
+if kubectl -n argocd get deployment argocd-server >/dev/null 2>&1; then
+  say "Argo CD is installed and manages itself; not reinstalling"
+else
+  say "Argo CD chart $ARGOCD_CHART_VERSION"
+  values=(-f "$ROOT/platform/values/argo-cd/images.yaml" -f "$ROOT/platform/values/argo-cd/common.yaml")
+  [ -f "$ROOT/platform/values/argo-cd/$ENV.yaml" ] && values+=(-f "$ROOT/platform/values/argo-cd/$ENV.yaml")
+  helm upgrade --install argocd argo-cd \
+    --repo https://argoproj.github.io/argo-helm --version "$ARGOCD_CHART_VERSION" \
+    --namespace argocd "${values[@]}" --wait --timeout 10m
+fi
 
 # --- 2. secrets that must never be in Git --------------------------------------
 if [ "$ENV" = kind ]; then
