@@ -1,12 +1,16 @@
 # demo.<domain>: /store goes to the backend, everything else to the frontend.
-# The hostname is patched in from the cluster's domain.
+# The hostname is patched in from the cluster's domain. Fields the API server
+# would default (group, kind, weight) are written out, so Argo CD compares
+# like with like and never reports drift that is not there.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: demo
 spec:
   parentRefs:
-    - name: platform
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform
       namespace: gateway
       sectionName: https
   hostnames:
@@ -17,12 +21,18 @@ spec:
             type: PathPrefix
             value: /store
       backendRefs:
-        - name: backend
+        - group: ""
+          kind: Service
+          name: backend
           port: 9898
+          weight: 1
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: frontend
+        - group: ""
+          kind: Service
+          name: frontend
           port: 9898
+          weight: 1

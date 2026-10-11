@@ -55,7 +55,9 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: platform-wildcard-tls
+          - group: ""
+            kind: Secret
+            name: platform-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Selector
@@ -78,10 +80,16 @@ metadata:
   namespace: gateway
 spec:
   parentRefs:
-    - name: platform
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform
       sectionName: http
   rules:
-    - filters:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
