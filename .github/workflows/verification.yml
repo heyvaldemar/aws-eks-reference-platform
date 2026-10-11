@@ -9,6 +9,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # A change to documentation alone cannot break the platform; it is
+    # checked on main after merge like everything else.
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
   schedule:
     - cron: "17 5 * * 1"
   workflow_dispatch:
