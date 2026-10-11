@@ -1,0 +1,19 @@
+# The demo tenant: podinfo as a two-replica frontend and a one-replica
+# backend that keeps data on a volume. It exists to be checked: every e2e
+# assertion (the route, the certificate, the network policies, traces,
+# metrics, the backup and the restore) runs against it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: demo
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: demo
+    includeSelectors: false
+resources:
+  - namespace.yaml
+  - message.yaml
+  - frontend.yaml
+  - backend.yaml
+  - route.yaml
+  - network-policies.yaml
+  - monitoring.yaml

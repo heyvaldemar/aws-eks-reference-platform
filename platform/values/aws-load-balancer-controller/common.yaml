@@ -1,0 +1,11 @@
+replicaCount: 2
+serviceAccount:
+  name: aws-load-balancer-controller
+resources:
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {memory: 512Mi}
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+nodeSelector:
+  platform.heyvaldemar.com/node-group: system

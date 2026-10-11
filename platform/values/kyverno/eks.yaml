@@ -1,0 +1,10 @@
+# Admission is on the request path of every pod: three replicas, so a node
+# drain never leaves the webhook without an endpoint.
+admissionController:
+  replicas: 3
+backgroundController:
+  replicas: 2
+cleanupController:
+  replicas: 2
+reportsController:
+  replicas: 2

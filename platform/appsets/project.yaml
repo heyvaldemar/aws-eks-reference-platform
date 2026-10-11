@@ -1,0 +1,36 @@
+# The AppProject every platform Application belongs to.
+#
+# It names the only sources Argo CD may pull from: this repository and the
+# chart repositories the ApplicationSets in this directory pin. A chart that
+# is not listed here cannot be installed by editing an ApplicationSet alone;
+# the project has to change too, in the same review.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: The reference platform's add-ons, configuration and demo workload.
+  sourceRepos:
+    # This repository, or a fork that kept its name.
+    - https://github.com/*/aws-eks-reference-platform
+    - https://github.com/*/aws-eks-reference-platform.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.jetstack.io
+    - https://charts.external-secrets.io
+    - https://kubernetes-sigs.github.io/external-dns/
+    - docker.io/envoyproxy
+    - https://kyverno.github.io/kyverno/
+    - https://prometheus-community.github.io/helm-charts
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
+    - https://vmware-tanzu.github.io/helm-charts
+    - public.ecr.aws/karpenter
+    - https://aws.github.io/eks-charts
+  destinations:
+    - name: in-cluster
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

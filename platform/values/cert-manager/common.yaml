@@ -1,0 +1,20 @@
+crds:
+  enabled: true
+  # Deleting the Application must not delete every Certificate in the cluster
+  # with the CRDs.
+  keep: true
+# Argo CD's health checks already wait for the webhook; the post-install
+# check Job would only add a hook to babysit.
+startupapicheck:
+  enabled: false
+resources:
+  requests: {cpu: 10m, memory: 64Mi}
+  limits: {memory: 256Mi}
+webhook:
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
+cainjector:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 256Mi}

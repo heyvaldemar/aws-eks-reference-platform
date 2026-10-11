@@ -1,0 +1,86 @@
+# Backs up namespaces and their volumes to object storage: S3 on EKS, the
+# in-cluster SeaweedFS on kind. The restore drill in tests/e2e proves it.
+#
+# Generated for every cluster whose Argo CD cluster Secret carries the label
+# enable_velero: "true" (see platform/clusters/). Values come from three files
+# in this repository, read at the revision the cluster is pinned to:
+# images.yaml (every image by digest), common.yaml, and <environment>.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: velero
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_velero: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: velero
+      labels:
+        platform.heyvaldemar.com/component: velero
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://vmware-tanzu.github.io/helm-charts
+          chart: velero
+          targetRevision: 12.2.1
+          helm:
+            releaseName: velero
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/platform/values/velero/images.yaml
+              - $values/platform/values/velero/common.yaml
+              - $values/platform/values/velero/{{ .metadata.labels.environment }}.yaml
+            values: |
+              configuration:
+                backupStorageLocation:
+                  - name: default
+                    provider: aws
+                    bucket: {{ .metadata.annotations.velero_bucket }}
+                    default: true
+                    config:
+                      region: {{ .metadata.annotations.aws_region }}
+              {{- if eq .metadata.labels.environment "kind" }}
+                      s3ForcePathStyle: "true"
+                      s3Url: {{ .metadata.annotations.velero_s3_url }}
+                      checksumAlgorithm: ""
+              {{- end }}
+        - repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+          targetRevision: '{{ .metadata.annotations.platform_revision }}'
+          ref: values
+      destination:
+        name: '{{ .name }}'
+        namespace: velero
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            # The node agent reads pod volumes from the host
+            # (/var/lib/kubelet/pods) to back them up, which only a privileged pod can.
+            # Nothing else runs in this namespace.
+            pod-security.kubernetes.io/enforce: privileged
+            pod-security.kubernetes.io/enforce-version: latest
+            pod-security.kubernetes.io/warn: restricted
+            pod-security.kubernetes.io/audit: restricted
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

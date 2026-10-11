@@ -1,0 +1,8 @@
+# Every image this component runs, pinned by digest. A tag can be moved to
+# different bytes after it was reviewed; a digest cannot. scripts/check-images.py
+# fails CI on any rendered image without one, and scripts/pin-images.py is how
+# these lines are moved when the chart version changes.
+image:
+  repository: docker.io/otel/opentelemetry-collector-contrib
+  tag: 0.161.0
+  digest: sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1

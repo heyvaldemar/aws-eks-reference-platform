@@ -1,0 +1,14 @@
+# Kyverno generates a default-deny NetworkPolicy in every tenant namespace
+# (generate-default-deny.yaml). Generating a kind takes permission to manage
+# it; these aggregate into Kyverno's own roles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-manage-networkpolicies
+  labels:
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+    rbac.kyverno.io/aggregate-to-admission-controller: "true"
+rules:
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]

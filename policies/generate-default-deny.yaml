@@ -1,0 +1,44 @@
+# Every tenant namespace starts closed: Kyverno creates a NetworkPolicy that
+# denies all ingress and egress, and keeps it there (synchronize: deleting it
+# brings it back). A tenant opens exactly the paths it needs with its own
+# NetworkPolicies, which add to this one; Kubernetes NetworkPolicies only
+# ever allow.
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: generate-default-deny
+  annotations:
+    policies.kyverno.io/description: Tenant namespaces get a default-deny NetworkPolicy that cannot be deleted for good.
+spec:
+  evaluation:
+    synchronize:
+      enabled: true
+    generateExisting:
+      enabled: true
+  matchConstraints:
+    objectSelector:
+      matchLabels:
+        platform.heyvaldemar.com/tenant: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [namespaces]
+  variables:
+    - name: namespace
+      expression: object.metadata.name
+    - name: defaultDeny
+      expression: >-
+        [
+          {
+            "kind": dyn("NetworkPolicy"),
+            "apiVersion": dyn("networking.k8s.io/v1"),
+            "metadata": dyn({"name": "default-deny"}),
+            "spec": dyn({
+              "podSelector": dyn({}),
+              "policyTypes": dyn(["Ingress", "Egress"])
+            })
+          }
+        ]
+  generate:
+    - expression: generator.Apply(variables.namespace, variables.defaultDeny)

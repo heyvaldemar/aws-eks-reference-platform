@@ -1,0 +1,12 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-probes
+policies:
+  - ../../require-probes.yaml
+resources:
+  - resources.yaml
+variables: values.yaml
+results:
+  - {isValidatingPolicy: true, policy: require-probes, kind: Deployment, resources: [probed], result: pass}
+  - {isValidatingPolicy: true, policy: require-probes, kind: StatefulSet, resources: [no-liveness], result: fail}

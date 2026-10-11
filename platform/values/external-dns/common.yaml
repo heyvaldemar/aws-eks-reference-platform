@@ -1,0 +1,15 @@
+provider:
+  name: aws
+# Hostnames come from HTTPRoutes attached to the platform Gateway.
+sources:
+  - gateway-httproute
+# Records it created are deleted when the route goes; records it did not
+# create (no TXT ownership record) are never touched.
+policy: sync
+registry: txt
+interval: 1m
+serviceAccount:
+  name: external-dns
+resources:
+  requests: {cpu: 10m, memory: 64Mi}
+  limits: {memory: 128Mi}

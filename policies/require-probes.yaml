@@ -1,0 +1,25 @@
+# A long-running workload without a readiness probe gets traffic before it
+# can serve it, and one without a liveness probe stays wedged until a person
+# notices. Jobs are exempt: they are supposed to finish.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-probes
+  annotations:
+    policies.kyverno.io/description: Deployments, StatefulSets and DaemonSets in a tenant namespace define readiness and liveness probes.
+spec:
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        platform.heyvaldemar.com/tenant: "true"
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+  validations:
+    - expression: >-
+        object.spec.template.spec.containers.all(c, has(c.readinessProbe) && has(c.livenessProbe))
+      message: every container needs a readinessProbe and a livenessProbe

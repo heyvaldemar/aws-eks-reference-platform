@@ -1,0 +1,47 @@
+# SeaweedFS as Velero's S3 on kind (manifests/object-store). EKS uses a real
+# S3 bucket and never gets this.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: object-store
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_object_store: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: object-store
+      labels:
+        platform.heyvaldemar.com/component: object-store
+    spec:
+      project: platform
+      source:
+        repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+        targetRevision: '{{ .metadata.annotations.platform_revision }}'
+        path: manifests/object-store
+      destination:
+        name: '{{ .name }}'
+        namespace: object-store
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

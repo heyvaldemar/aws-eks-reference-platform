@@ -1,0 +1,10 @@
+# S3 for Velero on kind: a single SeaweedFS server in the cluster. It stands
+# in for the S3 bucket Terraform creates on EKS, so the backup and restore
+# drill runs without an AWS account. Not an object store to keep data in.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: object-store
+resources:
+  - namespace.yaml
+  - seaweedfs.yaml
+  - bucket.yaml

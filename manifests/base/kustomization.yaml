@@ -1,0 +1,11 @@
+# Configuration every cluster gets, whatever it runs on. The environment
+# overlays in ../overlays add what differs; the ApplicationSet that applies
+# them (platform/appsets/platform-config.yaml) patches in the cluster's domain
+# and certificate issuer from its Argo CD cluster Secret.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - issuers.yaml
+  - gateway.yaml
+  - envoyproxy.yaml
+  - grafana-admin.yaml

@@ -1,0 +1,46 @@
+# Every image this component runs, pinned by digest. A tag can be moved to
+# different bytes after it was reviewed; a digest cannot. scripts/check-images.py
+# fails CI on any rendered image without one, and scripts/pin-images.py is how
+# these lines are moved when the chart version changes.
+image:
+  repository: docker.io/velero/velero
+  tag: v1.18.4
+  digest: sha256:c89fb5b6d1fd6afd368e0f483e6f5555fd62851a1eada8ac5c72482e674ca17b
+kubectl:
+  image:
+    repository: registry.k8s.io/kubectl
+    tag: v1.37.0
+    digest: sha256:5ed410ebac5dc976cc717098994dcdb29bbbd38f6bd65f582311f5be4ba719cf
+initContainers:
+  - name: velero-plugin-for-aws
+    image: docker.io/velero/velero-plugin-for-aws:v1.14.4@sha256:c85a7fa803569e3128c33e4f5766f84ab156c8d171c9f1dd2715581d45ce98fa
+    imagePullPolicy: IfNotPresent
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+# The helper Velero injects into a restored pod to write its volume data back.
+# It runs in the workload's namespace, so it has to pass that namespace's
+# admission: a pinned image, restricted security context, requests and limits.
+configMaps:
+  fs-restore-action-config:
+    labels:
+      velero.io/plugin-config: ""
+      velero.io/pod-volume-restore: RestoreItemAction
+    data:
+      image: docker.io/velero/velero:v1.18.4@sha256:c89fb5b6d1fd6afd368e0f483e6f5555fd62851a1eada8ac5c72482e674ca17b
+      cpuRequest: 10m
+      memRequest: 32Mi
+      cpuLimit: ""
+      memLimit: 128Mi
+      secCtx: '{"capabilities":{"drop":["ALL"]},"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}'

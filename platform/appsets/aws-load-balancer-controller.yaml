@@ -1,0 +1,66 @@
+# Turns the Envoy proxy Service into a Network Load Balancer with IP
+# targets. EKS only.
+#
+# Generated for every cluster whose Argo CD cluster Secret carries the label
+# enable_aws_load_balancer_controller: "true" (see platform/clusters/). Values come from three files
+# in this repository, read at the revision the cluster is pinned to:
+# images.yaml (every image by digest), common.yaml, and <environment>.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_aws_load_balancer_controller: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: aws-load-balancer-controller
+      labels:
+        platform.heyvaldemar.com/component: aws-load-balancer-controller
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://aws.github.io/eks-charts
+          chart: aws-load-balancer-controller
+          targetRevision: 3.6.0
+          helm:
+            releaseName: aws-load-balancer-controller
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/platform/values/aws-load-balancer-controller/images.yaml
+              - $values/platform/values/aws-load-balancer-controller/common.yaml
+              - $values/platform/values/aws-load-balancer-controller/{{ .metadata.labels.environment }}.yaml
+            values: |
+              clusterName: {{ .metadata.annotations.cluster_name }}
+              region: {{ .metadata.annotations.aws_region }}
+              vpcId: {{ .metadata.annotations.vpc_id }}
+        - repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+          targetRevision: '{{ .metadata.annotations.platform_revision }}'
+          ref: values
+      destination:
+        name: '{{ .name }}'
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

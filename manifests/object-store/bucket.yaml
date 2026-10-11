@@ -1,0 +1,50 @@
+# Creates the bucket Velero writes to, after SeaweedFS is up. Idempotent: an
+# existing bucket is left as it is.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-velero-bucket
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: create-bucket
+          image: docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              shell() { weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888; }
+              if echo "s3.bucket.list" | shell | grep -qw velero; then
+                echo "bucket velero exists"
+              else
+                echo "s3.bucket.create -name velero" | shell
+                echo "s3.bucket.list" | shell | grep -qw velero
+                echo "bucket velero created"
+              fi
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}

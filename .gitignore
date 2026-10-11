@@ -1,0 +1,20 @@
+# Rendered manifests and the chart cache scripts/render.py keeps.
+/out/
+/.cache/
+# Terraform working files and state: state holds resource IDs and, for some
+# resources, secrets. Never in Git.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+*_override.tf
+.terraformrc
+terraform.rc
+# Kubeconfigs written by make targets.
+/kubeconfig*
+.DS_Store

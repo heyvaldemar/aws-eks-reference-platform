@@ -1,0 +1,57 @@
+crds:
+  enabled: true
+  upgradeJob:
+    enabled: false
+# node-exporter needs the host's PID and network namespaces, which the
+# restricted Pod Security level this namespace enforces does not allow. Node
+# metrics come from the kubelet and cAdvisor instead.
+nodeExporter:
+  enabled: false
+# Control-plane components are not scrapeable on EKS and bind to localhost on
+# kind; scraping them only produces "target down" noise.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+prometheus:
+  prometheusSpec:
+    # Pick up every ServiceMonitor, PodMonitor and rule in the cluster, not
+    # only the ones labelled with this release's name.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    retention: 24h
+    resources:
+      requests: {cpu: 100m, memory: 512Mi}
+      limits: {memory: 1536Mi}
+prometheusOperator:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+kube-state-metrics:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 256Mi}
+grafana:
+  # The admin password is generated in the cluster by an External Secrets
+  # Password generator (manifests/base/secrets), never written down anywhere.
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  initChownData:
+    enabled: false
+  testFramework:
+    enabled: false
+  resources:
+    requests: {cpu: 20m, memory: 128Mi}
+    limits: {memory: 512Mi}
+  sidecar:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 128Mi}

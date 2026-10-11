@@ -1,0 +1,69 @@
+# Implements the Gateway API. The same Gateway and HTTPRoute objects serve
+# on kind, EKS, GKE and AKS, which is what keeps the platform portable.
+#
+# Generated for every cluster whose Argo CD cluster Secret carries the label
+# enable_envoy_gateway: "true" (see platform/clusters/). Values come from three files
+# in this repository, read at the revision the cluster is pinned to:
+# images.yaml (every image by digest), common.yaml, and <environment>.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_envoy_gateway: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: envoy-gateway
+      labels:
+        platform.heyvaldemar.com/component: envoy-gateway
+    spec:
+      project: platform
+      sources:
+        - repoURL: docker.io/envoyproxy
+          chart: gateway-helm
+          targetRevision: v1.9.2
+          helm:
+            releaseName: envoy-gateway
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/platform/values/envoy-gateway/images.yaml
+              - $values/platform/values/envoy-gateway/common.yaml
+              - $values/platform/values/envoy-gateway/{{ .metadata.labels.environment }}.yaml
+        - repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+          targetRevision: '{{ .metadata.annotations.platform_revision }}'
+          ref: values
+      destination:
+        name: '{{ .name }}'
+        namespace: envoy-gateway-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+            pod-security.kubernetes.io/enforce-version: latest
+            pod-security.kubernetes.io/warn: restricted
+            pod-security.kubernetes.io/audit: restricted
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

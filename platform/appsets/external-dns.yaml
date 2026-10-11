@@ -1,0 +1,76 @@
+# Publishes the Gateway's hostnames to Route 53. EKS only: kind has no DNS
+# to publish to.
+#
+# Generated for every cluster whose Argo CD cluster Secret carries the label
+# enable_external_dns: "true" (see platform/clusters/). Values come from three files
+# in this repository, read at the revision the cluster is pinned to:
+# images.yaml (every image by digest), common.yaml, and <environment>.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: external-dns
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_external_dns: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: external-dns
+      labels:
+        platform.heyvaldemar.com/component: external-dns
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://kubernetes-sigs.github.io/external-dns/
+          chart: external-dns
+          targetRevision: 1.23.0
+          helm:
+            releaseName: external-dns
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/platform/values/external-dns/images.yaml
+              - $values/platform/values/external-dns/common.yaml
+              - $values/platform/values/external-dns/{{ .metadata.labels.environment }}.yaml
+            values: |
+              domainFilters:
+                - {{ .metadata.annotations.domain }}
+              txtOwnerId: {{ .metadata.annotations.cluster_name }}
+              env:
+                - name: AWS_DEFAULT_REGION
+                  value: {{ .metadata.annotations.aws_region }}
+        - repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+          targetRevision: '{{ .metadata.annotations.platform_revision }}'
+          ref: values
+      destination:
+        name: '{{ .name }}'
+        namespace: external-dns
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+            pod-security.kubernetes.io/enforce-version: latest
+            pod-security.kubernetes.io/warn: restricted
+            pod-security.kubernetes.io/audit: restricted
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

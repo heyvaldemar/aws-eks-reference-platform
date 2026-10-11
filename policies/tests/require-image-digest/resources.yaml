@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pinned
+  namespace: tenant
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tag-only
+  namespace: tenant
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: init-tag-only
+  namespace: tenant
+spec:
+  selector:
+    matchLabels: {app: x}
+  template:
+    metadata:
+      labels: {app: x}
+    spec:
+      initContainers:
+        - name: init
+          image: docker.io/library/busybox:1.37
+      containers:
+        - name: app
+          image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da

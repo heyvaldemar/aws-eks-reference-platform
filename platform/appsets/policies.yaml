@@ -1,0 +1,48 @@
+# The admission policies in policies/. Every one of them has a test that
+# shows it a violation (policies/tests) and an e2e step that tries one
+# against the live cluster (tests/e2e).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: policies
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_kyverno: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: policies
+      labels:
+        platform.heyvaldemar.com/component: policies
+    spec:
+      project: platform
+      source:
+        repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+        targetRevision: '{{ .metadata.annotations.platform_revision }}'
+        path: policies
+      destination:
+        name: '{{ .name }}'
+        namespace: kyverno
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

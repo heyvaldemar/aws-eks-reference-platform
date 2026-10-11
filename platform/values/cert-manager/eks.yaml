@@ -1,0 +1,9 @@
+# Route 53 DNS-01 with the controller's own identity: Terraform associates the
+# cert-manager service account with an IAM role through EKS Pod Identity, and
+# a ClusterIssuer may use those ambient credentials (the chart's default).
+serviceAccount:
+  name: cert-manager
+replicaCount: 2
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

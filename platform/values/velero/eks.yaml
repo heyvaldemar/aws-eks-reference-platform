@@ -1,0 +1,6 @@
+# S3 through EKS Pod Identity: no access key anywhere.
+credentials:
+  useSecret: false
+serviceAccount:
+  server:
+    name: velero

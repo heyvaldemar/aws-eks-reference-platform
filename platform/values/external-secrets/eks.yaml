@@ -1,0 +1,3 @@
+# AWS Secrets Manager through EKS Pod Identity: no keys in the cluster.
+serviceAccount:
+  name: external-secrets

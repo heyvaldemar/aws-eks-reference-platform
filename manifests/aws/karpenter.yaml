@@ -1,0 +1,58 @@
+# Capacity for workloads, provisioned by Karpenter on demand. Graviton first
+# (cheaper per vCPU), Spot first with On-Demand as the fallback, and nodes
+# replaced at most every 30 days so they pick up new AMIs.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  role: placeholder-node-role
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: placeholder-cluster
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: placeholder-cluster
+  metadataOptions:
+    httpTokens: required
+    httpPutResponseHopLimit: 1
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 40Gi
+        volumeType: gp3
+        encrypted: true
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64, amd64]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [spot, on-demand]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: [c, m, r, t]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+  limits:
+    cpu: "32"
+    memory: 128Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m

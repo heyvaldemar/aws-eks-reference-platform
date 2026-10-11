@@ -1,0 +1,15 @@
+# Every image this component runs, pinned by digest. A tag can be moved to
+# different bytes after it was reviewed; a digest cannot. scripts/check-images.py
+# fails CI on any rendered image without one, and scripts/pin-images.py is how
+# these lines are moved when the chart version changes.
+image:
+  repository: ghcr.io/external-secrets/external-secrets
+  tag: v2.12.0@sha256:7a3c4f7e038fa0f86a3172da19b9388f3f4d846e87e9994ee3474c5b72a9330d
+webhook:
+  image:
+    repository: ghcr.io/external-secrets/external-secrets
+    tag: v2.12.0@sha256:7a3c4f7e038fa0f86a3172da19b9388f3f4d846e87e9994ee3474c5b72a9330d
+certController:
+  image:
+    repository: ghcr.io/external-secrets/external-secrets
+    tag: v2.12.0@sha256:7a3c4f7e038fa0f86a3172da19b9388f3f4d846e87e9994ee3474c5b72a9330d

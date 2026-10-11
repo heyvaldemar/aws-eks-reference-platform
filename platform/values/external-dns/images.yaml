@@ -1,0 +1,7 @@
+# Every image this component runs, pinned by digest. A tag can be moved to
+# different bytes after it was reviewed; a digest cannot. scripts/check-images.py
+# fails CI on any rendered image without one, and scripts/pin-images.py is how
+# these lines are moved when the chart version changes.
+image:
+  repository: registry.k8s.io/external-dns/external-dns
+  tag: v0.23.0@sha256:1854499e2b08cee47c40a08e356bff20dcb192dbcfde8378fc3f900f12cad5a3

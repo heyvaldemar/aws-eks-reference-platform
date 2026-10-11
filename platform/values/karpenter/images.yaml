@@ -1,0 +1,6 @@
+# Every image this component runs, pinned by digest. A tag can be moved to
+# different bytes after it was reviewed; a digest cannot. scripts/check-images.py
+# fails CI on any rendered image without one, and scripts/pin-images.py is how
+# these lines are moved when the chart version changes.
+# The chart pins its controller image by digest itself; nothing to add.
+{}

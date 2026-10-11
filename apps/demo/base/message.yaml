@@ -1,0 +1,18 @@
+# The frontend's banner, read from the platform's secret store: AWS Secrets
+# Manager on EKS, the fake provider on kind. The e2e check reads it back
+# through the Gateway, which proves the whole chain.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: demo-message
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: platform
+  target:
+    name: demo-message
+  data:
+    - secretKey: message
+      remoteRef:
+        key: demo/message

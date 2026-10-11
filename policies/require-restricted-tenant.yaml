@@ -1,0 +1,28 @@
+# A tenant namespace enforces the restricted Pod Security Standard: no root,
+# no privilege escalation, no host access, a seccomp profile. The label is
+# what makes the API server enforce it; this policy makes the label
+# mandatory, so a tenant cannot opt out by leaving it off.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-restricted-tenant
+  annotations:
+    policies.kyverno.io/description: Tenant namespaces enforce the restricted Pod Security Standard.
+spec:
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    objectSelector:
+      matchLabels:
+        platform.heyvaldemar.com/tenant: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [namespaces]
+  validations:
+    - expression: >-
+        has(object.metadata.labels) &&
+        'pod-security.kubernetes.io/enforce' in object.metadata.labels &&
+        object.metadata.labels['pod-security.kubernetes.io/enforce'] == 'restricted'
+      message: a tenant namespace must carry pod-security.kubernetes.io/enforce=restricted

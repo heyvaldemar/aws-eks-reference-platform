@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - storageclass.yaml
+patches:
+  # Two proxies behind an internet-facing Network Load Balancer that sends
+  # traffic straight to pod IPs (the AWS Load Balancer Controller makes it).
+  - target:
+      kind: EnvoyProxy
+      name: platform
+    patch: |-
+      - op: replace
+        path: /spec/provider/kubernetes/envoyDeployment/replicas
+        value: 2
+      - op: replace
+        path: /spec/provider/kubernetes/envoyService
+        value:
+          type: LoadBalancer
+          externalTrafficPolicy: Cluster
+          annotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: external
+            service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+            service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing

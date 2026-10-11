@@ -1,0 +1,69 @@
+# Argo CD manages itself after bootstrap/bootstrap.sh installs it once.
+# A version change here is how Argo CD is upgraded.
+#
+# Generated for every cluster whose Argo CD cluster Secret carries the label
+# enable_argo_cd: "true" (see platform/clusters/). Values come from three files
+# in this repository, read at the revision the cluster is pinned to:
+# images.yaml (every image by digest), common.yaml, and <environment>.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argo-cd
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_argo_cd: "true"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: argo-cd
+      labels:
+        platform.heyvaldemar.com/component: argo-cd
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://argoproj.github.io/argo-helm
+          chart: argo-cd
+          targetRevision: 10.10.2
+          helm:
+            releaseName: argocd
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/platform/values/argo-cd/images.yaml
+              - $values/platform/values/argo-cd/common.yaml
+              - $values/platform/values/argo-cd/{{ .metadata.labels.environment }}.yaml
+        - repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+          targetRevision: '{{ .metadata.annotations.platform_revision }}'
+          ref: values
+      destination:
+        name: '{{ .name }}'
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+            pod-security.kubernetes.io/enforce-version: latest
+            pod-security.kubernetes.io/warn: restricted
+            pod-security.kubernetes.io/audit: restricted
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

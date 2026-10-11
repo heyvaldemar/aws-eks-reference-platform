@@ -1,0 +1,24 @@
+deployNodeAgent: true
+# Volumes are copied file by file with Kopia (file-system backup) on both
+# kind and EKS, so the drill CI runs daily is the same mechanism a real
+# restore uses. EBS snapshots are the faster option on EKS and are discussed
+# in docs/decisions.
+snapshotsEnabled: false
+configuration:
+  defaultVolumesToFsBackup: true
+  uploaderType: kopia
+schedules:
+  daily-tenants:
+    schedule: "0 3 * * *"
+    template:
+      ttl: 168h
+      labelSelector: {}
+      includedNamespaces:
+        - demo
+resources:
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {memory: 512Mi}
+nodeAgent:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 1Gi}

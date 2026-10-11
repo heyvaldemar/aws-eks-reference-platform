@@ -1,0 +1,20 @@
+# How Envoy Gateway runs the data plane for the platform GatewayClass. The
+# environment overlays decide how the proxy is exposed: a ClusterIP Service on
+# kind (reached with kubectl port-forward), a Network Load Balancer on EKS.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: platform
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: 1
+        container:
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+      envoyService:
+        type: ClusterIP

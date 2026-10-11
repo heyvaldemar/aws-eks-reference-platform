@@ -1,0 +1,78 @@
+# What only exists on AWS: the Secrets Manager store, the Let's Encrypt
+# issuers that answer DNS-01 in Route 53, and Karpenter's NodePool and
+# EC2NodeClass. Region, cluster name and node role come from the cluster's
+# Argo CD Secret, which Terraform's outputs filled.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: aws-config
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            environment: "eks"
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: aws-config
+      labels:
+        platform.heyvaldemar.com/component: aws-config
+    spec:
+      project: platform
+      source:
+        repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+        targetRevision: '{{ .metadata.annotations.platform_revision }}'
+        path: manifests/aws
+        kustomize:
+          patches:
+            - target:
+                kind: ClusterSecretStore
+                name: platform
+              patch: |-
+                - op: replace
+                  path: /spec/provider/aws/region
+                  value: "{{ .metadata.annotations.aws_region }}"
+            - target:
+                kind: ClusterIssuer
+                name: letsencrypt-.*
+              patch: |-
+                - op: replace
+                  path: /spec/acme/solvers/0/dns01/route53/region
+                  value: "{{ .metadata.annotations.aws_region }}"
+            - target:
+                kind: EC2NodeClass
+                name: default
+              patch: |-
+                - op: replace
+                  path: /spec/role
+                  value: "{{ .metadata.annotations.karpenter_node_role }}"
+                - op: replace
+                  path: /spec/subnetSelectorTerms/0/tags/karpenter.sh~1discovery
+                  value: "{{ .metadata.annotations.cluster_name }}"
+                - op: replace
+                  path: /spec/securityGroupSelectorTerms/0/tags/karpenter.sh~1discovery
+                  value: "{{ .metadata.annotations.cluster_name }}"
+      destination:
+        name: '{{ .name }}'
+        namespace: karpenter
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

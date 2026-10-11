@@ -1,0 +1,35 @@
+# A private CA inside the cluster: a self-signed root, and a ClusterIssuer
+# that signs with it. On kind it issues the Gateway's certificate (there is
+# no public DNS for an ACME challenge). On EKS it stays available for
+# internal certificates while the Gateway uses Let's Encrypt.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: reference-platform-ca
+  secretName: platform-ca
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    kind: ClusterIssuer
+    name: selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: platform-ca
+spec:
+  ca:
+    secretName: platform-ca

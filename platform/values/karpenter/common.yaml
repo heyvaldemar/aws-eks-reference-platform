@@ -1,0 +1,15 @@
+replicas: 2
+serviceAccount:
+  name: karpenter
+controller:
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {memory: 1Gi}
+# Karpenter must not run on capacity it provisions and can take away: it
+# stays on the system node group Terraform creates, whose nodes carry this
+# taint so nothing else lands there by accident.
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+nodeSelector:
+  platform.heyvaldemar.com/node-group: system

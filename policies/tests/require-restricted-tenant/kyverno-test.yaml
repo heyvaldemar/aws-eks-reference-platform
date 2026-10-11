@@ -1,0 +1,11 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-restricted-tenant
+policies:
+  - ../../require-restricted-tenant.yaml
+resources:
+  - resources.yaml
+results:
+  - {isValidatingPolicy: true, policy: require-restricted-tenant, kind: Namespace, resources: [restricted-tenant], result: pass}
+  - {isValidatingPolicy: true, policy: require-restricted-tenant, kind: Namespace, resources: [baseline-tenant, unlabelled-tenant], result: fail}

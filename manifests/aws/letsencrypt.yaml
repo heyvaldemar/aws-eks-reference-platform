@@ -1,0 +1,30 @@
+# Let's Encrypt over DNS-01 in the Route 53 zone Terraform created for the
+# cluster's domain. Staging first: its certificates are untrusted but its
+# rate limits are generous, which is where a new setup should fail.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging-account
+    solvers:
+      - dns01:
+          route53:
+            region: placeholder-region
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-production-account
+    solvers:
+      - dns01:
+          route53:
+            region: placeholder-region

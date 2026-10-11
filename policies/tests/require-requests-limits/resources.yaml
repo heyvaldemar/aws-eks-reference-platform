@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sized
+  namespace: tenant
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-memory-limit
+  namespace: tenant
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsized-init
+  namespace: tenant
+spec:
+  initContainers:
+    - name: init
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+  containers:
+    - name: app
+      image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 64Mi}

@@ -1,0 +1,28 @@
+# Two chart sources are OCI registries rather than Helm repositories, and
+# Argo CD only treats a registry as a Helm source when a repository Secret
+# says so. Neither holds a credential: both registries are public.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: envoyproxy-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: envoyproxy
+  type: helm
+  url: docker.io/envoyproxy
+  enableOCI: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: karpenter-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: karpenter
+  type: helm
+  url: public.ecr.aws/karpenter
+  enableOCI: "true"

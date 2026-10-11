@@ -1,0 +1,11 @@
+# The tenant label is what the platform keys on: Kyverno's policies apply
+# here, Kyverno generates a default-deny NetworkPolicy here, and the Gateway
+# accepts routes from here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    platform.heyvaldemar.com/tenant: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

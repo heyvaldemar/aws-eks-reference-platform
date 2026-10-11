@@ -1,0 +1,17 @@
+# Admission policy for tenant namespaces: namespaces labelled
+# platform.heyvaldemar.com/tenant: "true". Platform namespaces run upstream
+# charts this repository does not author; their images are checked for
+# digests before they ship (scripts/check-images.py), not at admission.
+#
+# Every policy here has a Kyverno CLI test in tests/<policy>/ with at least one
+# resource it must refuse, and tests/e2e tries a violation against the live
+# cluster. scripts/check-policy-tests.py fails CI if a policy has neither.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - rbac.yaml
+  - require-image-digest.yaml
+  - require-requests-limits.yaml
+  - require-probes.yaml
+  - require-restricted-tenant.yaml
+  - generate-default-deny.yaml

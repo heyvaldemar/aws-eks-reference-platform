@@ -1,0 +1,9 @@
+# What only exists on AWS. platform/appsets/aws-config.yaml applies it on EKS
+# and patches in the region, cluster name and node role from the cluster's
+# Argo CD Secret; the values below are placeholders those patches replace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - secret-store.yaml
+  - letsencrypt.yaml
+  - karpenter.yaml

@@ -1,0 +1,12 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-requests-limits
+policies:
+  - ../../require-requests-limits.yaml
+resources:
+  - resources.yaml
+variables: values.yaml
+results:
+  - {isValidatingPolicy: true, policy: require-requests-limits, kind: Pod, resources: [sized], result: pass}
+  - {isValidatingPolicy: true, policy: require-requests-limits, kind: Pod, resources: [no-memory-limit, unsized-init], result: fail}
