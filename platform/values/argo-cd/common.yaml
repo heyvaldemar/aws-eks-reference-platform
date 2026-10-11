@@ -1,6 +1,12 @@
 # Argo CD as this platform runs it: no Dex and no notifications (a reference
 # has no SSO or chat to wire them to), ApplicationSets on, every component
 # with requests and a memory limit.
+configs:
+  params:
+    # Diff against a server-side dry run of the apply, not against the bare
+    # manifest: fields the API server defaults (Gateway API, CRD conversion
+    # settings, StatefulSet claim templates) stop showing as drift.
+    controller.diff.server.side: "true"
 dex:
   enabled: false
 notifications:
