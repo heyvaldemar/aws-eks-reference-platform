@@ -12,7 +12,6 @@ schedules:
     schedule: "0 3 * * *"
     template:
       ttl: 168h
-      labelSelector: {}
       includedNamespaces:
         - demo
 resources:

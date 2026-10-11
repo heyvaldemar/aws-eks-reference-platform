@@ -6,8 +6,9 @@ controller:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {memory: 1Gi}
 # Karpenter must not run on capacity it provisions and can take away: it
-# stays on the system node group Terraform creates, whose nodes carry this
-# taint so nothing else lands there by accident.
+# stays on the system node group Terraform creates, selected by that group's
+# label. The toleration lets it stay there if the group is ever tainted for
+# critical add-ons only.
 tolerations:
   - key: CriticalAddonsOnly
     operator: Exists

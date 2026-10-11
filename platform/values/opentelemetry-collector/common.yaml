@@ -2,6 +2,11 @@
 # rate, error and latency metrics that Prometheus scrapes, so "are traces
 # arriving" is a PromQL query, not a tracing backend to run.
 mode: deployment
+# The contrib distribution: it has the spanmetrics connector and the
+# Prometheus exporter. The chart has no default image, so the choice lives
+# here and only the pin (tag and digest) in images.yaml.
+image:
+  repository: docker.io/otel/opentelemetry-collector-contrib
 command:
   name: otelcol-contrib
 ports:

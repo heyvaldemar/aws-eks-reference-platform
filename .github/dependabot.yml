@@ -1,0 +1,26 @@
+# Keeps the pinned GitHub Actions and the Terraform provider current. Charts,
+# images and CLI tools are not in any ecosystem Dependabot reads here; the
+# Verification workflow's weekly freshness job reports those
+# (scripts/check-freshness.py) and fleet triage moves them.
+#
+# Grouped: one pull request per ecosystem per week is a queue that gets read.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+  - package-ecosystem: terraform
+    directory: /terraform
+    schedule:
+      interval: weekly
+    groups:
+      terraform:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps

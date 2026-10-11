@@ -167,6 +167,10 @@ def render_helm(app, src, refs, tmp):
            "--namespace", app["spec"]["destination"]["namespace"], "--kube-version", KUBE_VERSION,
            "--include-crds"]
     for vf in helm.get("valueFiles", []):
+        # RENDER_CHART_DEFAULT_IMAGES=1 leaves the image pins out, to see
+        # which images a chart version would pick by itself.
+        if os.environ.get("RENDER_CHART_DEFAULT_IMAGES") == "1" and vf.endswith("/images.yaml"):
+            continue
         ref, _, rel = vf.partition("/")
         path = os.path.join(refs[ref], rel) if ref.startswith("$") else vf
         if os.path.exists(path):

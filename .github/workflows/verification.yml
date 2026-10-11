@@ -1,0 +1,139 @@
+name: Verification
+
+# Everything that can be checked without a cluster: the workflows and
+# scripts, the Terraform (and that its test can fail), the rendered
+# Kubernetes manifests (and that each check can fail), and, on the schedule,
+# whether any pin has fallen behind upstream.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Workflows and shell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the pinned CI images
+        run: grep -E '^[A-Z_]+=' ci-images.pins >> "$GITHUB_ENV"
+
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$ACTIONLINT_IMAGE" -color
+
+      - name: shellcheck
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" -x \
+            bootstrap/bootstrap.sh scripts/*.sh tests/e2e/*.sh
+
+  terraform:
+    name: Terraform, and that its test can fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the pinned CI images
+        run: grep -E '^[A-Z_]+=' ../ci-images.pins >> "$GITHUB_ENV"
+
+      - name: terraform fmt
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$TERRAFORM_IMAGE" fmt -check -diff -recursive
+
+      - name: terraform init (no backend; the lockfile is the authority)
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$TERRAFORM_IMAGE" init -backend=false -input=false -lockfile=readonly
+
+      - name: terraform validate
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$TERRAFORM_IMAGE" validate
+
+      - name: tflint, with the AWS ruleset
+        env:
+          # tflint --init fetches the pinned ruleset from GitHub's API.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm -e GITHUB_TOKEN -v "$PWD:/data" -w /data --entrypoint sh "$TFLINT_IMAGE" \
+            -c 'tflint --init && tflint --format compact'
+
+      # A plan against a mocked AWS provider: no account, no credentials.
+      - name: terraform test
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$TERRAFORM_IMAGE" test
+
+      - name: The test, shown each violation it exists for
+        run: python3 tests/plant_violations.py
+
+  manifests:
+    name: Rendered manifests, and that each check can fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned tools
+        run: |
+          pip install --quiet --user 'PyYAML==6.0.3'
+          ./scripts/install-tools.sh >> "$GITHUB_PATH"
+
+      - name: Cache the charts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/charts
+          key: charts-${{ hashFiles('platform/appsets/*.yaml') }}
+
+      - name: All static checks
+        run: ./scripts/validate.sh
+
+      - name: Each check, shown the violation it exists for
+        run: python3 tests/static/plant_violations.py
+
+      - name: Upload what was rendered
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rendered-manifests
+          path: out/
+          retention-days: 7
+
+  freshness:
+    name: Pins that fell behind upstream
+    # Scheduled and manual only: a new upstream release is not actionable in
+    # an unrelated pull request. A failure lands as a workflow-failure
+    # notification, which fleet triage reads.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare every pin with what upstream has released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pip install --quiet --user 'PyYAML==6.0.3'
+          python3 scripts/check-freshness.py

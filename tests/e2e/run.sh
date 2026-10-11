@@ -31,6 +31,7 @@ PF_PID=""
 results=()
 failed=0
 
+# shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
   [ -n "$PF_PID" ] && { kill "$PF_PID"; wait "$PF_PID"; } 2>/dev/null
   kubectl delete namespace e2e-probe --ignore-not-found --wait=false >/dev/null 2>&1

@@ -16,8 +16,10 @@
 #
 # Tools: helm, kubectl, kubeconform, kube-linter, pluto, kyverno, python3 with
 # PyYAML. scripts/install-tools.sh installs the pinned versions.
+# The check_* functions are called by name from the loop at the bottom.
+# shellcheck disable=SC2329
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 KUBE_VERSION=1.37.0
 # yannh/kubernetes-json-schema at a fixed commit: the built-in schemas cannot
@@ -68,7 +70,7 @@ check_pluto() {
   for env in "${ENVS[@]}"; do
     pluto detect-files -d "out/$env" --target-versions "k8s=v$KUBE_VERSION" -o wide || rc=1
   done
-  return $rc
+  return "$rc"
 }
 
 check_argocd() { python3 scripts/check-argocd.py "${ENVS[@]/#/out/}"; }

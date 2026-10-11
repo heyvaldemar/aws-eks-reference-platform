@@ -23,7 +23,7 @@ while :; do
   fi
   if [ -z "${pending//[[:space:]]/}" ]; then
     echo "all Applications Synced and Healthy:"
-    sed 's/^/  /' <<<"$status"
+    while IFS= read -r l; do echo "  $l"; done <<<"$status"
     exit 0
   fi
   if [ "$(date +%s)" -ge "$deadline" ]; then

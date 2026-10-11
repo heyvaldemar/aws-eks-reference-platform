@@ -1,0 +1,135 @@
+name: kind e2e
+
+# The claim "tested daily on kind": a fresh kind cluster, the whole platform
+# installed by Argo CD from this repository at the commit under test, and
+# tests/e2e/run.sh against it. A second job installs the previous release
+# first and moves it to this commit, which is the upgrade a user makes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kind-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Fresh install, every check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned tools
+        run: |
+          pip install --quiet --user 'PyYAML==6.0.3'
+          ./scripts/install-tools.sh >> "$GITHUB_PATH"
+
+      - name: Create the kind cluster
+        run: kind create cluster --config kind/cluster.yaml --wait 120s
+
+      - name: Bootstrap Argo CD at this commit
+        env:
+          PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
+          # The commit under test. On a pull request that is the head commit,
+          # which GitHub serves from this repository too.
+          PLATFORM_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Read access while the repository is private; harmless once public.
+          PLATFORM_REPO_TOKEN: ${{ github.token }}
+          SKIP_PUSH_CHECK: "1"
+        run: ./bootstrap/bootstrap.sh kind
+
+      - name: Wait for every Application to be Synced and Healthy
+        run: |
+          python3 scripts/render.py kind out/kind >/dev/null
+          EXPECTED_APPS="$(python3 -c 'import yaml; print(" ".join(a["metadata"]["name"] for a in yaml.safe_load_all(open("out/kind/_applications.yaml")) if a))')" \
+            ./scripts/wait-for-platform.sh 1500
+
+      - name: Run the checks
+        run: ./tests/e2e/run.sh
+
+      - name: What the cluster looked like
+        if: failure()
+        run: ./scripts/diagnose.sh
+
+  upgrade:
+    name: Previous release, upgraded to this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Which release is the previous one
+        id: previous
+        run: |
+          tag="$(git tag --list 'v*' --sort=-v:refname --merged HEAD | grep -v "^$(git describe --tags --exact-match 2>/dev/null || echo none)$" | head -1)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ -z "$tag" ]; then
+            echo "::notice::no earlier release to upgrade from; this job starts with the first release after v1.0.0"
+          else
+            echo "upgrading from $tag"
+          fi
+
+      - name: Install the pinned tools
+        if: steps.previous.outputs.tag != ''
+        run: |
+          pip install --quiet --user 'PyYAML==6.0.3'
+          ./scripts/install-tools.sh >> "$GITHUB_PATH"
+
+      - name: Install the previous release
+        if: steps.previous.outputs.tag != ''
+        env:
+          PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
+          PLATFORM_REVISION: ${{ steps.previous.outputs.tag }}
+          PLATFORM_REPO_TOKEN: ${{ github.token }}
+          SKIP_PUSH_CHECK: "1"
+          TAG: ${{ steps.previous.outputs.tag }}
+        run: |
+          # The previous release's own kind config and bootstrap, as a user
+          # of that release has them.
+          git worktree add -q ../previous "$TAG"
+          kind create cluster --config ../previous/kind/cluster.yaml --wait 120s
+          ../previous/bootstrap/bootstrap.sh kind
+          ./scripts/wait-for-platform.sh 1500
+
+      - name: Write a marker the upgrade must keep
+        if: steps.previous.outputs.tag != ''
+        run: ./tests/e2e/upgrade-marker.sh write
+
+      - name: Move the cluster to this commit
+        if: steps.previous.outputs.tag != ''
+        env:
+          PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
+          PLATFORM_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+          PLATFORM_REPO_TOKEN: ${{ github.token }}
+          SKIP_PUSH_CHECK: "1"
+        run: |
+          ./bootstrap/bootstrap.sh kind
+          python3 scripts/render.py kind out/kind >/dev/null
+          EXPECTED_APPS="$(python3 -c 'import yaml; print(" ".join(a["metadata"]["name"] for a in yaml.safe_load_all(open("out/kind/_applications.yaml")) if a))')" \
+            ./scripts/wait-for-platform.sh 1500
+
+      - name: The marker survived, and every check passes after the upgrade
+        if: steps.previous.outputs.tag != ''
+        run: |
+          ./tests/e2e/upgrade-marker.sh check
+          ./tests/e2e/run.sh
+
+      - name: What the cluster looked like
+        if: failure() && steps.previous.outputs.tag != ''
+        run: ./scripts/diagnose.sh
