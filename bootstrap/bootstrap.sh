@@ -85,8 +85,10 @@ if [ "$ENV" = kind ]; then
   kubectl label namespace velero --overwrite \
     pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/warn=restricted >/dev/null
   if ! kubectl -n object-store get secret object-store-s3 >/dev/null 2>&1; then
-    access="$(LC_ALL=C tr -dc 'A-Z0-9' </dev/urandom | head -c 20)"
-    secret="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40)"
+    # A finite read: `tr </dev/urandom | head` dies of SIGPIPE under pipefail.
+    access="$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Z0-9' | cut -c1-20)"
+    secret="$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-40)"
+    [ "${#access}" -eq 20 ] && [ "${#secret}" -eq 40 ] || { echo "could not generate S3 keys" >&2; exit 1; }
     printf '{"identities":[{"name":"velero","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$access" "$secret" |
       kubectl -n object-store create secret generic object-store-s3 --from-file=s3.json=/dev/stdin
     printf '[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n' "$access" "$secret" |
