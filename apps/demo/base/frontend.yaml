@@ -21,13 +21,17 @@ spec:
         runAsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: frontend
+      # Replicas on different nodes when there are nodes to spread over; on a
+      # one-node kind cluster both land on the same node, which is allowed.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: frontend
       containers:
         - name: podinfo
           image: ghcr.io/stefanprodan/podinfo:6.15.0@sha256:ec73780a8425f59ea49f5bc8cdff0d598805a224fbaa1f86c67a244f250fa9da
@@ -87,6 +91,8 @@ metadata:
   name: frontend
 spec:
   maxUnavailable: 1
+  # A pod that is not Ready protects nothing; let a drain evict it.
+  unhealthyPodEvictionPolicy: AlwaysAllow
   selector:
     matchLabels:
       app.kubernetes.io/name: frontend

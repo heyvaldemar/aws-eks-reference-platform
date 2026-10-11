@@ -1,0 +1,10 @@
+# kube-linter's defaults, applied to the manifests this repository authors
+# (apps/, manifests/, tests/e2e). Upstream charts are not linted here: their
+# images are checked for digests, their schemas by kubeconform.
+checks:
+  addAllBuiltIn: false
+  exclude:
+    # CPU limits throttle a container even when the node has idle CPU; the
+    # platform requires CPU requests and memory limits instead (see
+    # policies/require-requests-limits.yaml).
+    - unset-cpu-requirements
