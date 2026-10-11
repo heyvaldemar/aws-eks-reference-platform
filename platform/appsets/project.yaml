@@ -15,6 +15,7 @@ spec:
     # This repository, or a fork that kept its name.
     - https://github.com/*/aws-eks-reference-platform
     - https://github.com/*/aws-eks-reference-platform.git
+    - git@github.com:*/aws-eks-reference-platform.git
     - https://argoproj.github.io/argo-helm
     - https://charts.jetstack.io
     - https://charts.external-secrets.io

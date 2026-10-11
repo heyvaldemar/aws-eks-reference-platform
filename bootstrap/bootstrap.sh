@@ -15,8 +15,12 @@
 # Environment:
 #   PLATFORM_REPO_URL     the repository Argo CD reads (default: origin)
 #   PLATFORM_REVISION     the commit it reads (default: HEAD, which must be pushed)
-#   PLATFORM_REPO_TOKEN   only for a private repository: a read token. It is
-#                         written into the cluster through stdin, never argv.
+#   PLATFORM_REPO_TOKEN   only for a private repository over HTTPS: a read
+#                         token (in CI, the job's own GITHUB_TOKEN). It reaches
+#                         the cluster through stdin, never argv.
+#   PLATFORM_REPO_SSH_KEY_FILE  only for a private repository over SSH: a
+#                         read-only deploy key; PLATFORM_REPO_URL is then the
+#                         git@github.com:... form.
 #   SKIP_PUSH_CHECK=1     skip the "is HEAD on the remote" check (CI checks out
 #                         a detached commit it knows is pushed)
 #   any @NAME@ the cluster file uses (eks: filled by the Makefile from
@@ -93,7 +97,14 @@ if [ "$ENV" = kind ]; then
   fi
 fi
 
-if [ -n "${PLATFORM_REPO_TOKEN:-}" ]; then
+if [ -n "${PLATFORM_REPO_SSH_KEY_FILE:-}" ]; then
+  say "read access to $PLATFORM_REPO_URL (deploy key)"
+  kubectl -n argocd create secret generic platform-repo \
+    --from-literal=type=git --from-literal=url="$PLATFORM_REPO_URL" \
+    --from-file=sshPrivateKey="$PLATFORM_REPO_SSH_KEY_FILE" --dry-run=client -o yaml |
+    kubectl label --local -f - argocd.argoproj.io/secret-type=repository -o yaml |
+    kubectl apply -f - >/dev/null
+elif [ -n "${PLATFORM_REPO_TOKEN:-}" ]; then
   say "read access to $PLATFORM_REPO_URL"
   kubectl -n argocd create secret generic platform-repo \
     --from-literal=type=git --from-literal=url="$PLATFORM_REPO_URL" --from-literal=username=x-access-token \
