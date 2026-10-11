@@ -288,18 +288,30 @@ EOF
       if [ "$phase" = Completed ]; then pass "restore $name Completed"; else
         fail "restore $name ended $phase: $(kubectl -n velero get restore "$name" -o jsonpath='{.status}')"
       fi
-      kubectl -n demo rollout status statefulset/backend --timeout=300s >/dev/null 2>&1
+      # The restore is Completed before the volume data is back: Velero's
+      # node agent copies it into the new volume while the pod's restore
+      # helper waits. Wait for every PodVolumeRestore, then for the pod.
+      pvr=""
+      for _ in $(seq 1 60); do
+        pvr="$(kubectl -n velero get podvolumerestores -l velero.io/restore-name="$name" -o jsonpath='{.items[*].status.phase}')"
+        [ -n "$pvr" ] && ! grep -qvE '^(Completed ?)+$' <<<"$pvr " && break
+        sleep 5
+      done
+      echo "  pod volume restores: ${pvr:-none}"
+      kubectl -n demo wait --for=condition=Ready pod/backend-0 --timeout=300s >/dev/null 2>&1
       kubectl -n demo rollout status deployment/frontend --timeout=300s >/dev/null 2>&1
-      got=""
-      for _ in $(seq 1 12); do
-        got="$(gw "https://$HOST:$HTTPS_PORT/store/$hash" 2>/dev/null)"
+      got="" code=""
+      for _ in $(seq 1 24); do
+        kill -0 "$PF_PID" 2>/dev/null || start_port_forward
+        code="$(gw -o "$WORK/marker" -w '%{http_code}' "https://$HOST:$HTTPS_PORT/store/$hash" 2>"$WORK/curl.err")"
+        got="$(cat "$WORK/marker" 2>/dev/null)"
         [ "$got" = "$marker" ] && break
         sleep 5
       done
       if [ "$got" = "$marker" ]; then
         pass "the marker written before the backup is served again after the restore"
       else
-        fail "after the restore /store/$hash returned '${got:0:200}', expected '$marker'"
+        fail "after the restore /store/$hash answered HTTP ${code:-none} '${got:0:200}' $(cat "$WORK/curl.err"), expected '$marker' (pod volume restores: ${pvr:-none})"
       fi
     fi
   else

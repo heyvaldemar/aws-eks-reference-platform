@@ -28,50 +28,60 @@ curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 htt
 
 One thing to know before breaking anything: Argo CD heals drift. Every `kubectl edit` below would be reverted within seconds, so each exercise first turns off auto-sync for the Application it touches. That switch is itself part of real incident work.
 
-## 1. Admission refuses everything
+## 1. A policy change stops every deploy
 
-**Break it.** The Kyverno admission webhook fails closed: if Kyverno is down, pods in tenant namespaces are refused. Take it down.
-
-```bash
-kubectl -n argocd patch application kyverno --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
-kubectl -n kyverno scale deployment kyverno-admission-controller --replicas=0
-kubectl -n demo rollout restart deployment/frontend
-```
-
-**Find it.** The rollout stalls. Work out why without looking at the step above.
-
-```bash
-kubectl -n demo rollout status deployment/frontend --timeout=30s
-kubectl -n demo get replicasets
-kubectl -n demo describe replicaset <the newest one> | tail -5
-kubectl get validatingwebhookconfigurations | grep -i kyverno
-kubectl -n kyverno get deployments
-```
-
-The ReplicaSet's events name the webhook it could not call. The webhook's service has no endpoints, because its deployment has no replicas.
-
-**Fix it.**
-
-```bash
-kubectl -n argocd patch application kyverno --type merge \
-  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-kubectl -n kyverno get deployment kyverno-admission-controller -w   # Argo CD restores the replica count from Git
-kubectl -n demo rollout status deployment/frontend
-```
-
-**Now the policy doing its job.** Try a pod whose image has a tag and no digest:
+**Warm up: the policies doing their job.** Try a pod whose image has a tag and no digest:
 
 ```bash
 kubectl -n demo run tag-only --image=ghcr.io/stefanprodan/podinfo:6.15.0 --restart=Never
 ```
 
-Read the refusal: it names the policy (`require-image-digest`). Read the policy itself with `kubectl get validatingpolicy require-image-digest -o yaml`, then find the digest the running frontend uses and try again with it:
+The refusal names a ValidatingAdmissionPolicy, `vpol-require-image-digest`. Kyverno compiled it from `policies/require-image-digest.yaml`, and the API server enforces it itself. Find the digest the running frontend uses and try again with it:
 
 ```bash
 kubectl -n demo get deployment frontend -o jsonpath='{.spec.template.spec.containers[0].image}'; echo
 ```
 
-It is refused again, by a different policy this time. Keep reading the messages until the pod is admitted, or decide it should not be.
+It is refused again, by something else this time. Keep reading the messages until the pod is admitted, or until you decide it should not be.
+
+**Break it.** Someone tightens the probes policy without checking the workloads it covers. Be that someone:
+
+```bash
+kubectl -n argocd patch application policies --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
+kubectl patch validatingpolicy require-probes --type json -p '[{"op":"replace","path":"/spec/validations/0/expression",
+  "value":"object.spec.template.spec.containers.all(c, has(c.readinessProbe) && has(c.livenessProbe) && has(c.startupProbe))"}]'
+```
+
+**Find it.** Now any change to the demo is refused:
+
+```bash
+kubectl -n demo rollout restart deployment/frontend
+```
+
+The message says every container needs a readiness and a liveness probe. Check the deployment: it has both. A message that contradicts the object means the message is not the rule, so read the rule the API server is actually running, and compare it with Git:
+
+```bash
+kubectl get validatingadmissionpolicies
+kubectl get validatingadmissionpolicy vpol-require-probes -o jsonpath='{.spec.validations[0].expression}'; echo
+git show HEAD:policies/require-probes.yaml | grep -A1 'expression:'
+kubectl -n argocd get application policies -o jsonpath='{.status.sync.status}'; echo
+```
+
+The live policy asks for a `startupProbe` that the file in Git does not, and Argo CD reports the policies Application `OutOfSync`.
+
+**Fix it.** Git is the source of truth; let it win:
+
+```bash
+kubectl -n argocd patch application policies --type merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+kubectl get validatingadmissionpolicy vpol-require-probes -o jsonpath='{.spec.validations[0].expression}'; echo
+kubectl -n demo rollout restart deployment/frontend
+kubectl -n demo rollout status deployment/frontend
+```
+
+If the stricter rule was wanted, the fix is the other way round: add the probe to the workloads first, in Git, then tighten the policy.
+
+**Going further: is admission still closed with Kyverno down?** Turn off auto-sync for the `kyverno` Application, scale `kyverno-admission-controller` to zero, and retry the tag-only pod. Kyverno removes its own webhooks when it stops, so a policy enforced only through them would let the pod in. These are enforced by the API server and still refuse. Turn auto-sync back on and watch Argo CD bring the replica back.
 
 ## 2. The site returns 503
 
@@ -195,7 +205,7 @@ make down
 
 | Exercise | CKA area |
 |---|---|
-| 1. admission webhook down | Troubleshooting: workloads that will not start; cluster components |
+| 1. a policy change stops deploys | Troubleshooting: workloads that will not start; admission control |
 | 2. 503 behind a Gateway | Services and networking: NetworkPolicy, endpoints, Gateway API |
 | 3. a restore without data | Storage: volumes, claims, StatefulSets; backup and restore |
 

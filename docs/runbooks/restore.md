@@ -1,6 +1,6 @@
 # Restore
 
-Velero backs up the demo tenant every night at 03:00 UTC (`schedules.daily-tenants` in `platform/values/velero/common.yaml`, kept 7 days) and copies its volumes file by file with Kopia. The kind e2e run does exactly this procedure every day: write a marker, back up, delete the namespace, restore, read the marker back.
+Velero backs up the demo tenant every night at 03:00 UTC (`schedules.daily-tenants` in `platform/values/velero/common.yaml`, kept 7 days) and copies its volumes file by file with Kopia. The kind e2e run does exactly this procedure every day: write a marker, back up, delete the namespace, restore, read the marker back. While this repository was being built it caught a restore that reported success over an empty disk. Status is not data.
 
 ## Restore a namespace
 
