@@ -10,6 +10,12 @@ metadata:
 spec:
   validationActions: [Deny]
   failurePolicy: Fail
+  # Kyverno compiles this into a ValidatingAdmissionPolicy that the API server
+  # enforces itself. A Kyverno outage removes Kyverno's webhooks (tests/e2e
+  # proves it); it does not remove this.
+  autogen:
+    validatingAdmissionPolicy:
+      enabled: true
   matchConstraints:
     namespaceSelector:
       matchLabels:

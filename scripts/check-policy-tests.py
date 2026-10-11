@@ -8,6 +8,12 @@ validation deleted. Every ValidatingPolicy listed in policies/kustomization.yaml
 needs a Kyverno CLI test in policies/tests/<name>/ with at least one expected
 `fail`; every GeneratingPolicy needs one that checks the generated resource.
 The tests are then run by `kyverno test policies/tests`.
+
+Every ValidatingPolicy must also compile to a native ValidatingAdmissionPolicy
+(spec.autogen.validatingAdmissionPolicy.enabled). Kyverno removes its own
+webhooks when its admission controller stops; a policy enforced only through
+them is not enforced during a Kyverno outage. tests/e2e proves the native
+ones still refuse with Kyverno scaled to zero.
 """
 import os
 import sys
@@ -36,6 +42,9 @@ def main():
                     continue
                 with open(test, encoding="utf-8") as f:
                     results = [r for r in (yaml.safe_load(f).get("results") or []) if r.get("policy") == name]
+                if kind == "ValidatingPolicy" and not (((doc["spec"].get("autogen") or {})
+                        .get("validatingAdmissionPolicy") or {}).get("enabled")):
+                    bad.append("ValidatingPolicy %s: not compiled to a ValidatingAdmissionPolicy, so a Kyverno outage switches it off" % name)
                 if kind == "GeneratingPolicy":
                     if not any(r.get("generatedResource") for r in results):
                         bad.append("GeneratingPolicy %s: its test never checks what it generates" % name)

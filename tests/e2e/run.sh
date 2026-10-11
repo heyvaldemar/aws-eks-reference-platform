@@ -12,7 +12,9 @@
 #   3. the Gateway serves demo.<domain> over HTTPS with the platform CA's
 #      certificate, redirects HTTP, and shows a value from the secret store
 #   4. admission refuses each planted violation in tests/e2e/plants and
-#      admits the compliant control
+#      admits the compliant control, and keeps refusing them with Kyverno's
+#      admission controller scaled to zero (the policies are compiled into
+#      native ValidatingAdmissionPolicies); Argo CD then brings Kyverno back
 #   5. connections the network policies do not allow are refused
 #   6. metrics are scraped and traces arrive as span metrics
 #   7. Velero backs up the demo tenant, the namespace is deleted, and the
@@ -33,6 +35,9 @@ failed=0
 
 # shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
+  # Never leave Kyverno with auto-sync off, whatever failed.
+  kubectl -n argocd patch application kyverno --type merge \
+    -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null 2>&1
   [ -n "$PF_PID" ] && { kill "$PF_PID"; wait "$PF_PID"; } 2>/dev/null
   kubectl delete namespace e2e-probe --ignore-not-found --wait=false >/dev/null 2>&1
   rm -rf "$WORK"
@@ -125,18 +130,56 @@ fi
 
 # --- 4 -----------------------------------------------------------------------
 step "4. admission: each planted violation is refused, the control is admitted"
-for plant in "$HERE"/plants/*.yaml; do
-  name="$(basename "$plant" .yaml)"
-  expect="$(sed -n 's/^# expect: //p' "$plant")"
-  out="$(kubectl apply --dry-run=server -f "$plant" 2>&1)"
-  rc=$?
-  if [ "$expect" = admitted ]; then
-    if [ $rc -eq 0 ]; then pass "$name: admitted"; else fail "$name was refused: $out"; fi
-  elif [ $rc -ne 0 ] && grep -q "$expect" <<<"$out"; then
-    pass "$name: refused by $expect"
+plants() {  # plants <label>: every plant refused as expected, the control admitted
+  local plant name expect out rc
+  for plant in "$HERE"/plants/*.yaml; do
+    name="$(basename "$plant" .yaml)"
+    expect="$(sed -n 's/^# expect: //p' "$plant")"
+    out="$(kubectl apply --dry-run=server -f "$plant" 2>&1)"
+    rc=$?
+    if [ "$expect" = admitted ]; then
+      if [ $rc -eq 0 ]; then pass "$1$name: admitted"; else fail "$1$name was refused: $out"; fi
+    elif [ $rc -ne 0 ] && grep -q "$expect" <<<"$out"; then
+      pass "$1$name: refused by $expect"
+    else
+      fail "$1$name: expected a refusal by '$expect', got (rc=$rc): $out"
+    fi
+  done
+}
+
+plants ""
+
+step "4b. the same refusals with Kyverno's admission controller stopped"
+for vp in $(kubectl get validatingpolicies.policies.kyverno.io -o jsonpath='{.items[*].metadata.name}'); do
+  if kubectl get validatingadmissionpolicy "vpol-$vp" >/dev/null 2>&1; then
+    pass "$vp is compiled into a ValidatingAdmissionPolicy the API server enforces"
   else
-    fail "$name: expected a refusal by '$expect', got (rc=$rc): $out"
+    fail "$vp has no ValidatingAdmissionPolicy; only a Kyverno webhook enforces it"
   fi
+done
+kubectl -n argocd patch application kyverno --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}' >/dev/null
+kubectl -n kyverno scale deployment kyverno-admission-controller --replicas=0 >/dev/null
+kubectl -n kyverno wait --for=delete pod -l app.kubernetes.io/component=admission-controller --timeout=180s >/dev/null 2>&1
+if kubectl get validatingwebhookconfiguration kyverno-resource-validating-webhook-cfg >/dev/null 2>&1; then
+  echo "  (Kyverno's resource webhook is still registered)"
+else
+  echo "  (Kyverno removed its resource webhook when it stopped)"
+fi
+plants "Kyverno down: "
+kubectl -n argocd patch application kyverno --type merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null
+back=""
+for _ in $(seq 1 60); do
+  back="$(kubectl -n kyverno get deployment kyverno-admission-controller -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
+  [ "${back:-0}" -ge 1 ] && break
+  sleep 5
+done
+if [ "${back:-0}" -ge 1 ]; then pass "Argo CD brought Kyverno's admission controller back from zero"; else
+  fail "Kyverno's admission controller is still at zero after auto-sync was turned back on"
+fi
+for _ in $(seq 1 30); do
+  kubectl get validatingwebhookconfiguration kyverno-resource-validating-webhook-cfg >/dev/null 2>&1 && break
+  sleep 5
 done
 
 # --- 5 -----------------------------------------------------------------------

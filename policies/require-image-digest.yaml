@@ -11,9 +11,12 @@ metadata:
 spec:
   validationActions: [Deny]
   failurePolicy: Fail
+  # Kyverno compiles this into a ValidatingAdmissionPolicy that the API server
+  # enforces itself. A Kyverno outage removes Kyverno's webhooks (tests/e2e
+  # proves it); it does not remove this.
   autogen:
-    podControllers:
-      controllers: [deployments, statefulsets, daemonsets, jobs, cronjobs]
+    validatingAdmissionPolicy:
+      enabled: true
   matchConstraints:
     namespaceSelector:
       matchLabels:
@@ -23,11 +26,30 @@ spec:
         apiVersions: [v1]
         operations: [CREATE, UPDATE]
         resources: [pods]
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+      - apiGroups: [batch]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [jobs, cronjobs]
+  variables:
+    # One expression for a Pod and for everything that makes Pods, written
+    # out rather than left to Kyverno's autogen: autogen would rule out the
+    # native ValidatingAdmissionPolicy below.
+    - name: podSpec
+      expression: >-
+        object.kind == 'Pod' ? object.spec :
+        object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec :
+        object.spec.template.spec
+    - name: containers
+      expression: >-
+        variables.podSpec.containers +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers : []) +
+        (has(variables.podSpec.ephemeralContainers) ? variables.podSpec.ephemeralContainers : [])
   validations:
-    - expression: >-
-        object.spec.containers.all(c, c.image.contains('@sha256:')) &&
-        (!has(object.spec.initContainers) || object.spec.initContainers.all(c, c.image.contains('@sha256:'))) &&
-        (!has(object.spec.ephemeralContainers) || object.spec.ephemeralContainers.all(c, c.image.contains('@sha256:')))
+    - expression: variables.containers.all(c, c.image.contains('@sha256:'))
       message: >-
         every image must be referenced by digest (repository:tag@sha256:...);
         a tag alone can point at different bytes tomorrow

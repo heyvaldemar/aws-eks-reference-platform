@@ -3,6 +3,10 @@
 # brings it back). A tenant opens exactly the paths it needs with its own
 # NetworkPolicies, which add to this one; Kubernetes NetworkPolicies only
 # ever allow.
+#
+# Generation has no native Kubernetes equivalent, so this one runs in
+# Kyverno: a namespace created while Kyverno is down gets its default-deny
+# when Kyverno is back (generateExisting), not before.
 apiVersion: policies.kyverno.io/v1
 kind: GeneratingPolicy
 metadata:
