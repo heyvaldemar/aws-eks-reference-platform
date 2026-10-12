@@ -16,6 +16,9 @@
 #      admission controller scaled to zero (the policies are compiled into
 #      native ValidatingAdmissionPolicies); Argo CD then brings Kyverno back
 #   5. connections the network policies do not allow are refused
+#   5b. a second tenant (apps/team-b, made from apps/_template) is served on
+#      its own hostname, gets its own default-deny, and cannot read secrets
+#      through the store the platform reserves for another tenant
 #   6. metrics are scraped and traces arrive as span metrics; the demo's SLO
 #      rules are loaded, its dashboard is in Grafana, and when the frontend
 #      fails the fast-burn alert really fires
@@ -51,8 +54,18 @@ fail() { results+=("FAIL  $1"); printf '  FAIL  %s\n' "$1"; failed=1; }
 step() { printf '\n== %s\n' "$*"; }
 
 # curl through a port-forward to the Envoy proxy, with the name resolving to it
-# and the platform CA as the only trusted root.
-gw() { curl -sS --max-time 10 --resolve "$HOST:$HTTPS_PORT:127.0.0.1" --cacert "$WORK/ca.crt" "$@"; }
+# and the platform CA as the only trusted root. A port-forward can die under
+# load or when the pod behind it goes away, and a dead one looks exactly like
+# a broken platform, so every call checks it first and restarts it if needed.
+tunnel_ok() {
+  [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 --resolve "$HOST:$HTTPS_PORT:127.0.0.1" \
+    --cacert "$WORK/ca.crt" "https://$HOST:$HTTPS_PORT/healthz" 2>/dev/null)" != 000 ]
+}
+ensure_tunnel() { tunnel_ok || { start_port_forward && tunnel_ok; }; }
+gw() {
+  ensure_tunnel >/dev/null 2>&1
+  curl -sS --max-time 10 --resolve "$HOST:$HTTPS_PORT:127.0.0.1" --cacert "$WORK/ca.crt" "$@"
+}
 
 start_port_forward() {
   local svc
@@ -95,7 +108,7 @@ if [ -z "$unpinned" ]; then pass "running images: all pinned by digest"; else fa
 
 # --- 2 -----------------------------------------------------------------------
 step "2. Pod Security levels"
-for pair in demo=restricted gateway=restricted argocd=restricted monitoring=restricted \
+for pair in demo=restricted team-b=restricted gateway=restricted argocd=restricted monitoring=restricted \
             kyverno=restricted cert-manager=restricted external-secrets=restricted \
             envoy-gateway-system=restricted object-store=restricted velero=privileged; do
   ns="${pair%%=*}" want="${pair#*=}"
@@ -212,6 +225,77 @@ else
   pass "the backend cannot reach the internet"
 fi
 
+step "5b. tenants: onboarding from the template, and isolation between tenants"
+code_b="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve "team-b.$DOMAIN:$HTTPS_PORT:127.0.0.1" \
+  --cacert "$WORK/ca.crt" "https://team-b.$DOMAIN:$HTTPS_PORT/" 2>/dev/null)"
+if [ "$code_b" = 200 ]; then pass "team-b, made from apps/_template, answers on https://team-b.$DOMAIN"; else
+  fail "team-b's route answered '$code_b', expected 200"; fi
+if kubectl -n team-b get networkpolicy default-deny >/dev/null 2>&1; then pass "team-b got its own generated default-deny"; else
+  fail "team-b has no default-deny"; fi
+kubectl apply -f - >/dev/null <<EOF
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: e2e-borrowed-secret
+  namespace: team-b
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: platform
+  target:
+    name: e2e-borrowed-secret
+  data:
+    - secretKey: message
+      remoteRef:
+        key: demo/message
+EOF
+borrowed=""
+for _ in $(seq 1 12); do
+  borrowed="$(kubectl -n team-b get externalsecret e2e-borrowed-secret -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)"
+  [ -n "$borrowed" ] && break
+  sleep 5
+done
+if [ "$borrowed" = False ] && ! kubectl -n team-b get secret e2e-borrowed-secret >/dev/null 2>&1; then
+  pass "team-b cannot read demo's secret through the platform store (demo can, step 3)"
+else
+  fail "an ExternalSecret in team-b through the platform store is Ready='${borrowed:-unknown}'"
+fi
+kubectl -n team-b delete externalsecret e2e-borrowed-secret --ignore-not-found >/dev/null
+
+# A tenant that points its Application at a platform namespace is refused by
+# Argo CD itself: the tenants AppProject denies those destinations.
+repo="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.repoURL}')"
+rev="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.targetRevision}')"
+kubectl apply -f - >/dev/null <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: e2e-tenant-escape
+  namespace: argocd
+spec:
+  project: tenants
+  source:
+    repoURL: $repo
+    targetRevision: $rev
+    path: apps/team-b/overlays/kind
+  destination:
+    name: in-cluster
+    namespace: kube-system
+EOF
+escape=""
+for _ in $(seq 1 12); do
+  escape="$(kubectl -n argocd get application e2e-tenant-escape -o jsonpath='{.status.conditions[*].message}' 2>/dev/null)"
+  [ -n "$escape" ] && break
+  sleep 5
+done
+if grep -qiE "not permitted|denied" <<<"$escape" && [ -z "$(kubectl -n kube-system get deployment app -o name 2>/dev/null)" ]; then
+  pass "a tenant Application aimed at kube-system is refused by the tenants project"
+else
+  fail "a tenant Application aimed at kube-system was not refused: '${escape:-no condition}'"
+fi
+kubectl -n argocd delete application e2e-tenant-escape --ignore-not-found --wait=false >/dev/null
+
 # --- 6 -----------------------------------------------------------------------
 step "6. metrics and traces"
 for _ in $(seq 1 20); do gw -o /dev/null "https://$HOST:$HTTPS_PORT/" 2>/dev/null; done
@@ -260,24 +344,58 @@ done
 if [ "$found" = "Demo service level objectives" ]; then pass "Grafana serves the SLO dashboard"; else
   fail "Grafana does not serve the demo-slo dashboard"; fi
 
-# Make the frontend fail: podinfo answers /status/500 with a 500. Half a
-# minute of steady errors on top of the light traffic so far is far beyond a
+# Make the frontend fail: podinfo answers /status/500 with a 500. A few
+# minutes of steady errors on top of the light traffic so far is far beyond a
 # 14.4x burn; the alert has `for: 2m`, so it should fire within about four.
 firing() { promapi alerts | python3 -c '
 import json,sys
 a=[x for x in json.load(sys.stdin)["data"]["alerts"] if x["labels"].get("alertname")=="DemoErrorBudgetBurnFast" and x["labels"].get("job")=="frontend"]
 print(a[0]["state"] if a else "none")' 2>/dev/null; }
-( end=$(( $(date +%s) + 480 )); while [ "$(date +%s)" -lt "$end" ]; do
-    gw -o /dev/null "https://$HOST:$HTTPS_PORT/status/500" 2>/dev/null; sleep 0.2
-  done ) &
-LOAD_PID=$!
+# The failing requests come from a pod inside the cluster, through the Envoy
+# Service: eight minutes of load through a port-forward killed the forward in
+# CI, and then no request reached the frontend at all.
+envoy_ip="$(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gateway-name=platform -o jsonpath='{.items[0].spec.clusterIP}')"
+kubectl apply -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-fail-the-frontend
+  namespace: e2e-probe
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: load
+      image: docker.io/curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+      command: [sh, -c]
+      args:
+        - |
+          end=\$(( \$(date +%s) + 480 ))
+          while [ "\$(date +%s)" -lt "\$end" ]; do
+            curl -sk -o /dev/null --max-time 5 --resolve $HOST:443:$envoy_ip https://$HOST/status/500
+            sleep 0.2
+          done
+      resources:
+        requests: {cpu: 10m, memory: 16Mi}
+        limits: {memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+EOF
 state="none"
 for _ in $(seq 1 48); do
   state="$(firing)"
   [ "$state" = firing ] && break
   sleep 10
 done
-{ kill "$LOAD_PID"; wait "$LOAD_PID"; } 2>/dev/null
+kubectl -n e2e-probe delete pod e2e-fail-the-frontend --wait=false >/dev/null 2>&1
 if [ "$state" = firing ]; then pass "a failing frontend makes DemoErrorBudgetBurnFast fire"; else
   fail "the frontend failed for eight minutes and the fast-burn alert is '$state', not firing"; fi
 
@@ -347,6 +465,8 @@ EOF
         sleep 5
       done
       echo "  pod volume restores: ${pvr:-none}"
+      # `kubectl wait` on a pod that does not exist yet returns at once.
+      for _ in $(seq 1 60); do kubectl -n demo get pod backend-0 >/dev/null 2>&1 && break; sleep 5; done
       kubectl -n demo wait --for=condition=Ready pod/backend-0 --timeout=300s >/dev/null 2>&1
       kubectl -n demo rollout status deployment/frontend --timeout=300s >/dev/null 2>&1
       got="" code=""

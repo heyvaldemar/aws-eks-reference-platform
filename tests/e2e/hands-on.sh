@@ -57,7 +57,10 @@ tunnel() {
   until_true 30 bash -c '(exec 3<>/dev/tcp/127.0.0.1/8443) 2>/dev/null'
 }
 code() {  # code [curl args]: the HTTP status the demo answers with
-  kill -0 "$PF_PID" 2>/dev/null || tunnel
+  # A forward that died, or that points at a pod that went away, answers 000;
+  # that is the tunnel's failure, not the demo's, so it is restarted first.
+  [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 --cacert "$WORK/platform-ca.crt" \
+      --resolve demo.platform.test:8443:127.0.0.1 https://demo.platform.test:8443/healthz 2>/dev/null)" = 000 ] && tunnel
   curl -s -o "$WORK/body" -w '%{http_code}' --max-time 30 --cacert "$WORK/platform-ca.crt" \
     --resolve demo.platform.test:8443:127.0.0.1 "$@" 2>/dev/null
 }
@@ -161,10 +164,12 @@ spec:
 EOF
   until_true 600 bash -c "case \$(kubectl -n velero get restore $1 -o jsonpath='{.status.phase}') in Completed|Failed|PartiallyFailed|FailedValidation) true;; *) false;; esac"
   until_true 300 bash -c "! kubectl -n velero get podvolumerestores -l velero.io/restore-name=$1 -o jsonpath='{.items[*].status.phase}' | grep -qvE '^(Completed ?)*$'"
+  # `kubectl wait` on a pod that does not exist yet returns at once.
+  until_true 300 kubectl -n demo get pod backend-0 >/dev/null 2>&1
   kubectl -n demo wait --for=condition=Ready pod/backend-0 --timeout=300s >/dev/null 2>&1
   kubectl -n velero get restore "$1" -o jsonpath='{.status.phase}'
 }
-marker() { code "https://demo.platform.test:8443/store/$hash" >/dev/null; cat "$WORK/body"; }
+marker() { MARKER_CODE="$(code "https://demo.platform.test:8443/store/$hash")"; cat "$WORK/body"; }
 # The earlier exercises restarted the demo. A pod still shutting down when a
 # backup starts is a volume Velero cannot copy, so the guide waits first.
 kubectl -n demo rollout status deployment/frontend --timeout=300s >/dev/null
@@ -181,12 +186,16 @@ n_bad="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$bad" 
 autosync demo off
 kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
 [ "$(restore "from-bad-$RUN" "$bad")" = Completed ] && pass "the restore from the bad backup says Completed" || fail "the bad restore did not complete"
-got="$(marker)"
-[ "$got" != "written before the incident" ] && pass "and the data is gone" || fail "the data survived a backup that did not copy it"
+marker >/dev/null; got="$(cat "$WORK/body")"
+# "Gone" has to be the backend saying so (podinfo answers 500, reading file
+# failed), not a request that never arrived.
+[ "$MARKER_CODE" = 500 ] && [ "$got" != "written before the incident" ] && pass "and the data is gone: the backend answers $MARKER_CODE" \
+  || fail "the data-is-gone check got HTTP ${MARKER_CODE:-none}, not the backend's 500"
 kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
 [ "$(restore "from-good-$RUN" "$good")" = Completed ] && pass "the restore from the good backup Completed" || fail "the good restore did not complete"
-got="$(marker)"
-[ "$got" = "written before the incident" ] && pass "and the marker is back" || fail "the good restore did not bring the marker back: '${got:0:200}'"
+marker >/dev/null; got="$(cat "$WORK/body")"
+[ "$got" = "written before the incident" ] && pass "and the marker is back" \
+  || fail "the good restore did not bring the marker back: HTTP ${MARKER_CODE:-none} '${got:0:200}'"
 autosync demo on
 EXPECTED_APPS=demo "$ROOT/scripts/wait-for-platform.sh" 300 >/dev/null && pass "Argo CD finds the demo identical to Git" \
   || fail "the demo is not Synced and Healthy after the exercise"

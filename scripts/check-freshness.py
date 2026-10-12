@@ -126,6 +126,9 @@ def check_images():
     files = glob.glob(os.path.join(ROOT, "platform", "values", "*", "images.yaml"))
     files += glob.glob(os.path.join(ROOT, "apps", "**", "*.yaml"), recursive=True)
     files += glob.glob(os.path.join(ROOT, "manifests", "**", "*.yaml"), recursive=True)
+    # The e2e suite's own images (the probe pods, the load generator).
+    files += glob.glob(os.path.join(ROOT, "tests", "e2e", "**", "*.yaml"), recursive=True)
+    files += glob.glob(os.path.join(ROOT, "tests", "e2e", "*.sh"))
     for f in files:
         text = open(f, encoding="utf-8").read()
         refs.update(re.findall(r"([\w.-]+(?:/[\w.-]+)+:[\w.-]+@sha256:[0-9a-f]{64})", text))
@@ -145,8 +148,9 @@ def check_images():
             elif isinstance(n, list):
                 for v in n:
                     walk(v)
-        for doc in yaml.safe_load_all(text):
-            walk(doc)
+        if f.endswith(".yaml"):
+            for doc in yaml.safe_load_all(text):
+                walk(doc)
     for ref in sorted(refs):
         name, _, pinned = ref.partition("@")
         now = digest_of(name)
