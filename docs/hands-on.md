@@ -58,7 +58,7 @@ kubectl patch validatingpolicy require-probes --type json -p '[{"op":"replace","
   "value":"object.spec.template.spec.containers.all(c, has(c.readinessProbe) && has(c.livenessProbe) && has(c.startupProbe))"}]'
 ```
 
-**Find it.** Now any change to the demo is refused:
+**Find it.** Give it ten seconds or so: the API server picks up a changed admission policy on its own schedule, not the instant the object changes. Then any change to the demo is refused:
 
 ```bash
 kubectl -n demo rollout restart deployment/frontend
