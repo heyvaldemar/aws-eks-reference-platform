@@ -15,3 +15,5 @@ Each record states the context, the decision, what it costs, what was considered
 | 9 | [kind is the daily proof; EKS is validated by hand before releases](0009-kind-daily-eks-by-hand.md) | proposed |
 | 10 | [AWS validation runs: guards and cost reporting](0010-aws-validation-runs.md) | proposed, design only |
 | 11 | [Cost defaults: one NAT gateway, Graviton, standard support only](0011-cost-defaults.md) | proposed |
+| 12 | [Tenants: one directory each, one project each](0012-tenants-one-directory-each.md) | proposed |
+| 13 | [Service level objectives that are proven to page](0013-slos-proven-to-page.md) | proposed |
