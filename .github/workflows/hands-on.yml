@@ -1,0 +1,64 @@
+name: hands-on guide
+
+# docs/hands-on.md is a set of instructions a person follows on a laptop. A
+# guide nobody runs drifts from the platform it describes, so this runs it:
+# the same three break-and-fix exercises, with every symptom, diagnosis and
+# fix checked (tests/e2e/hands-on.sh). Weekly, and whenever the guide or the
+# script changes.
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  push:
+    branches: [main]
+    paths:
+      - docs/hands-on.md
+      - tests/e2e/hands-on.sh
+      - .github/workflows/hands-on.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hands-on-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guide:
+    name: Every exercise in the guide
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned tools
+        run: |
+          pip install --quiet --user 'PyYAML==6.0.3'
+          ./scripts/install-tools.sh >> "$GITHUB_PATH"
+
+      - name: Create the kind cluster
+        run: kind create cluster --config kind/cluster.yaml --wait 120s
+
+      - name: Bootstrap Argo CD at this commit
+        env:
+          PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
+          PLATFORM_REVISION: ${{ github.sha }}
+          PLATFORM_REPO_TOKEN: ${{ github.token }}
+          SKIP_PUSH_CHECK: "1"
+        run: ./bootstrap/bootstrap.sh kind
+
+      - name: Wait for every Application to be Synced and Healthy
+        run: |
+          python3 scripts/render.py kind out/kind >/dev/null
+          EXPECTED_APPS="$(python3 -c 'import yaml; print(" ".join(a["metadata"]["name"] for a in yaml.safe_load_all(open("out/kind/_applications.yaml")) if a))')" \
+            ./scripts/wait-for-platform.sh 1500
+
+      - name: Run the guide
+        run: ./tests/e2e/hands-on.sh
+
+      - name: What the cluster looked like
+        if: failure()
+        run: ./scripts/diagnose.sh

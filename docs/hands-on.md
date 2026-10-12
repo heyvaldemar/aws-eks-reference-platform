@@ -1,8 +1,10 @@
 # Hands-on: break it, find it, fix it
 
+Every command below is run weekly by CI, with each symptom and fix checked ([`tests/e2e/hands-on.sh`](../tests/e2e/hands-on.sh)), so the guide cannot quietly fall behind the platform.
+
 Bring the kind version up, then break three things on purpose and repair each with `kubectl`. Each exercise is about 15 minutes. They map onto the CKA's largest domain, troubleshooting, plus networking and storage; nothing here needs a cloud account.
 
-You need Docker with about 4 CPUs and 8 GB of memory for its VM, `make`, `git`, `curl` and Python 3 with PyYAML. `make` installs the pinned kind, kubectl and helm into `.cache/bin`.
+You need Docker with about 4 CPUs and 8 GB of memory for its VM, with little else running in it, plus `make`, `git`, `curl` and Python 3 with PyYAML. `make` installs the pinned kind, kubectl and helm into `.cache/bin`.
 
 ## 0. Bring it up
 
@@ -26,23 +28,27 @@ And check the demo answers:
 curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 https://demo.platform.test:8443/ | head -5
 ```
 
+If `curl` ever prints status `000` (nothing answered), the port-forward behind `make tunnel` has died, which happens when a busy laptop makes the API server slow. Start `make tunnel` again; it is not the site.
+
 One thing to know before breaking anything: Argo CD heals drift. Every `kubectl edit` below would be reverted within seconds, so each exercise first turns off auto-sync for the Application it touches. That switch is itself part of real incident work.
 
 ## 1. A policy change stops every deploy
 
-**Warm up: the policies doing their job.** Try a pod whose image has a tag and no digest:
+**Warm up: two layers of admission.** Start a bare pod whose image has a tag and no digest:
 
 ```bash
 kubectl -n demo run tag-only --image=ghcr.io/stefanprodan/podinfo:6.15.0 --restart=Never
 ```
 
-The refusal names a ValidatingAdmissionPolicy, `vpol-require-image-digest`. Kyverno compiled it from `policies/require-image-digest.yaml`, and the API server enforces it itself. Find the digest the running frontend uses and try again with it:
+It is refused, but not for the tag: the API server's own Pod Security admission rejects it first, because the namespace enforces the restricted level and a bare pod sets no security context. Now try a pod that satisfies Pod Security and still uses a tag, then its compliant twin:
 
 ```bash
-kubectl -n demo get deployment frontend -o jsonpath='{.spec.template.spec.containers[0].image}'; echo
+kubectl apply --dry-run=server -f tests/e2e/plants/tag-only-image.yaml
+kubectl apply --dry-run=server -f tests/e2e/plants/compliant-pod.yaml
+diff tests/e2e/plants/tag-only-image.yaml tests/e2e/plants/compliant-pod.yaml
 ```
 
-It is refused again, by something else this time. Keep reading the messages until the pod is admitted, or until you decide it should not be.
+The first is refused by a ValidatingAdmissionPolicy, `vpol-require-image-digest`, which Kyverno compiled from `policies/require-image-digest.yaml` and the API server enforces itself. The second is admitted. The diff is the digest.
 
 **Break it.** Someone tightens the probes policy without checking the workloads it covers. Be that someone:
 
@@ -122,7 +128,7 @@ Then confirm the 200, and that the generated default-deny comes back if you dele
 
 ## 3. A restore that said Completed
 
-**Set it up.** Write something worth losing, then take two backups: one that copies volumes and one that does not.
+**Set it up.** Write something worth losing, then take two backups, one after the other: one that copies volumes and one that does not.
 
 ```bash
 HASH=$(curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 \
@@ -140,9 +146,11 @@ spec:
   includedNamespaces: [demo]
   defaultVolumesToFsBackup: ${b##*:}
 EOF
+kubectl -n velero wait backup/hands-on-${b%%:*} --for=jsonpath='{.status.phase}'=Completed --timeout=10m
 done
-kubectl -n velero get backups -w   # until both are Completed
 ```
+
+One at a time on purpose: copying volumes is CPU-heavy, and on a laptop two at once can starve the API server.
 
 **Break it.** Lose the namespace, and restore from the wrong backup.
 
