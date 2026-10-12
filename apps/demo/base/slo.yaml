@@ -1,0 +1,86 @@
+# The demo's service level objectives, owned by the tenant like its code.
+#
+#   availability  99.5% of requests over 30 days answer without a 5xx
+#                 (an error budget of 0.5%, about 3.6 hours a month)
+#   latency       99% of requests answer within 500 ms
+#
+# Health and readiness probes are not requests anyone made, so they are left
+# out of both. Alerts follow the multi-window, multi-burn-rate method of the
+# Google SRE workbook: page when the budget burns fast enough to be gone in
+# about two days (14.4x over 1h, confirmed over 5m), open a ticket when it
+# would be gone in about five (6x over 6h, confirmed over 30m).
+#
+# tests/slo/demo-slo.test.yaml proves the alerts fire on a burn and stay quiet
+# on a normal error rate; tests/e2e makes the frontend fail and waits for the
+# page to fire in the running cluster.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-slo
+spec:
+  groups:
+    - name: demo-slo-sli
+      rules:
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*", status=~"5.."}[5m]))
+            /
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*"}[5m]))
+        - record: slo:sli_error:ratio_rate30m
+          expr: |
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*", status=~"5.."}[30m]))
+            /
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*"}[30m]))
+        - record: slo:sli_error:ratio_rate1h
+          expr: |
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*", status=~"5.."}[1h]))
+            /
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*"}[1h]))
+        - record: slo:sli_error:ratio_rate6h
+          expr: |
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*", status=~"5.."}[6h]))
+            /
+            sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="demo", path!~".*(healthz|readyz).*"}[6h]))
+        - record: slo:latency_p99:seconds_rate5m
+          expr: |
+            histogram_quantile(0.99, sum by (namespace, job, le) (rate(http_request_duration_seconds_bucket{namespace="demo", path!~".*(healthz|readyz).*"}[5m])))
+    - name: demo-slo-alerts
+      rules:
+        - alert: DemoErrorBudgetBurnFast
+          expr: |
+            slo:sli_error:ratio_rate1h > (14.4 * 0.005)
+            and
+            slo:sli_error:ratio_rate5m > (14.4 * 0.005)
+          for: 2m
+          labels:
+            severity: page
+            slo: demo-availability
+          annotations:
+            summary: "{{ $labels.job }} is burning its error budget 14x too fast"
+            description: >-
+              More than 7.2% of {{ $labels.job }}'s requests failed over the last hour
+              and the last five minutes. At this rate the month's budget is gone in
+              about two days. Start with docs/runbooks/incident.md.
+        - alert: DemoErrorBudgetBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate6h > (6 * 0.005)
+            and
+            slo:sli_error:ratio_rate30m > (6 * 0.005)
+          for: 15m
+          labels:
+            severity: ticket
+            slo: demo-availability
+          annotations:
+            summary: "{{ $labels.job }} is burning its error budget 6x too fast"
+            description: >-
+              More than 3% of {{ $labels.job }}'s requests failed over six hours. At
+              this rate the month's budget is gone in about five days.
+        - alert: DemoLatencyAboveObjective
+          expr: slo:latency_p99:seconds_rate5m > 0.5
+          for: 10m
+          labels:
+            severity: ticket
+            slo: demo-latency
+          annotations:
+            summary: "{{ $labels.job }} answers 1 request in 100 slower than 500 ms"
+            description: The 99th percentile has been above 500 ms for ten minutes.

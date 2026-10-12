@@ -9,3 +9,4 @@ resources:
   - gateway.yaml
   - envoyproxy.yaml
   - grafana-admin.yaml
+  - dashboards.yaml

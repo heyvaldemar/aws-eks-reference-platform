@@ -17,3 +17,4 @@ resources:
   - route.yaml
   - network-policies.yaml
   - monitoring.yaml
+  - slo.yaml

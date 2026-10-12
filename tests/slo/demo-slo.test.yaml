@@ -1,0 +1,70 @@
+# Unit tests for the demo's SLO rules (apps/demo/base/slo.yaml), run by
+# `promtool test rules` against synthetic series. scripts/validate.sh extracts
+# the rules into demo-slo.rules.yaml first. A burn must page; a normal error
+# rate must not; the recorded ratio must be the ratio.
+rule_files:
+  - demo-slo.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # Half the frontend's requests fail for 70 minutes: both alerts fire.
+  - interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{namespace="demo", job="frontend", path="/", status="200"}'
+        values: '0+600x70'
+      - series: 'http_request_duration_seconds_count{namespace="demo", job="frontend", path="/", status="500"}'
+        values: '0+600x70'
+      # Probes are not requests: thousands of healthy ones must not dilute the ratio.
+      - series: 'http_request_duration_seconds_count{namespace="demo", job="frontend", path="/healthz", status="200"}'
+        values: '0+60000x70'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: DemoErrorBudgetBurnFast
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: demo-availability
+              namespace: demo
+              job: frontend
+            exp_annotations:
+              summary: "frontend is burning its error budget 14x too fast"
+              description: "More than 7.2% of frontend's requests failed over the last hour and the last five minutes. At this rate the month's budget is gone in about two days. Start with docs/runbooks/incident.md."
+      - eval_time: 70m
+        alertname: DemoErrorBudgetBurnSlow
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              slo: demo-availability
+              namespace: demo
+              job: frontend
+            exp_annotations:
+              summary: "frontend is burning its error budget 6x too fast"
+              description: "More than 3% of frontend's requests failed over six hours. At this rate the month's budget is gone in about five days."
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m
+        eval_time: 70m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{namespace="demo", job="frontend"}'
+            value: 0.5
+
+  # One request in a thousand fails: inside the objective, nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{namespace="demo", job="frontend", path="/", status="200"}'
+        values: '0+5994x70'
+      - series: 'http_request_duration_seconds_count{namespace="demo", job="frontend", path="/", status="500"}'
+        values: '0+6x70'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: DemoErrorBudgetBurnFast
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: DemoErrorBudgetBurnSlow
+        exp_alerts: []
+    promql_expr_test:
+      - expr: slo:sli_error:ratio_rate5m
+        eval_time: 70m
+        exp_samples:
+          - labels: 'slo:sli_error:ratio_rate5m{namespace="demo", job="frontend"}'
+            value: 0.001

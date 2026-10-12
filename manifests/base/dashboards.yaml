@@ -1,0 +1,162 @@
+# The demo's SLO dashboard, picked up by Grafana's dashboard sidecar from
+# any ConfigMap in its namespace labelled grafana_dashboard: "1". It reads the
+# recording rules in apps/demo/base/slo.yaml, so the panels and the alerts
+# measure the same thing.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-demo-slo
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  demo-slo.json: |
+    {
+      "uid": "demo-slo",
+      "title": "Demo service level objectives",
+      "tags": [
+        "slo",
+        "demo"
+      ],
+      "timezone": "utc",
+      "schemaVersion": 39,
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Availability, last hour",
+          "description": "Objective: 99.5% of requests without a 5xx. Probes excluded.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "1 - slo:sli_error:ratio_rate1h{namespace=\"demo\"}",
+              "legendFormat": "{{job}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Error budget burn rate, last hour",
+          "description": "1 spends the month's budget in exactly a month. 14.4 pages; 6 over six hours opens a ticket.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "slo:sli_error:ratio_rate1h{namespace=\"demo\"} / 0.005",
+              "legendFormat": "{{job}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Latency, 99th percentile",
+          "description": "Objective: 500 ms.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "slo:latency_p99:seconds_rate5m{namespace=\"demo\"}",
+              "legendFormat": "{{job}}"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Requests per second",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (job) (rate(http_request_duration_seconds_count{namespace=\"demo\", path!~\".*(healthz|readyz).*\"}[5m]))",
+              "legendFormat": "{{job}}"
+            }
+          ]
+        }
+      ]
+    }

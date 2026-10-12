@@ -47,4 +47,8 @@ for p in json.load(sys.stdin)["items"]:
 done
 
 section "Velero"
-kubectl -n velero get backupstoragelocations,backups,restores 2>/dev/null
+kubectl -n velero get backupstoragelocations 2>/dev/null
+kubectl -n velero get backups.velero.io,restores.velero.io \
+  -o custom-columns='KIND:.kind,NAME:.metadata.name,PHASE:.status.phase,ERRORS:.status.errors,WARNINGS:.status.warnings,WHY:.status.failureReason,INVALID:.status.validationErrors' 2>/dev/null
+kubectl -n velero get podvolumebackups.velero.io,podvolumerestores.velero.io \
+  -o custom-columns='KIND:.kind,NAME:.metadata.name,POD:.spec.pod.name,VOLUME:.spec.volume,PHASE:.status.phase,MESSAGE:.status.message' 2>/dev/null

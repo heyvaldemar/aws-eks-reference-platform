@@ -2,6 +2,10 @@
 
 First minutes. The goal is to know what changed and what is broken before changing anything.
 
+## 0. If a page brought you here
+
+`DemoErrorBudgetBurnFast` (severity `page`) means more than 7.2% of a service's requests failed over the last hour and the last five minutes: at that rate the month's error budget is gone in about two days. The SLO and its alerts are in `apps/demo/base/slo.yaml`; the dashboard is "Demo service level objectives" in Grafana (`kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80`). Read which service, then go on below.
+
 ## 1. What does the platform say about itself
 
 ```bash

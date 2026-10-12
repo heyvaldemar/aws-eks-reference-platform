@@ -165,9 +165,15 @@ EOF
   kubectl -n velero get restore "$1" -o jsonpath='{.status.phase}'
 }
 marker() { code "https://demo.platform.test:8443/store/$hash" >/dev/null; cat "$WORK/body"; }
+# The earlier exercises restarted the demo. A pod still shutting down when a
+# backup starts is a volume Velero cannot copy, so the guide waits first.
+kubectl -n demo rollout status deployment/frontend --timeout=300s >/dev/null
+kubectl -n demo rollout status statefulset/backend --timeout=300s >/dev/null
+until_true 120 bash -c '[ -z "$(kubectl -n demo get pods -o jsonpath="{.items[?(@.metadata.deletionTimestamp)].metadata.name}")" ]'
+why() { kubectl -n velero get backup "$1" -o jsonpath='{.status.phase} errors={.status.errors} {.status.validationErrors} {.status.failureReason}'; }
 good="hands-on-good-$RUN" bad="hands-on-bad-$RUN"
-[ "$(backup "$good" true)" = Completed ] && pass "the backup that copies volumes Completed" || fail "the good backup did not complete"
-[ "$(backup "$bad" false)" = Completed ] && pass "the backup that does not copy volumes Completed too" || fail "the bad backup did not complete"
+[ "$(backup "$good" true)" = Completed ] && pass "the backup that copies volumes Completed" || fail "the good backup did not complete: $(why "$good")"
+[ "$(backup "$bad" false)" = Completed ] && pass "the backup that does not copy volumes Completed too" || fail "the bad backup did not complete: $(why "$bad")"
 n_good="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$good" -o name | wc -l | tr -d ' ')"
 n_bad="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$bad" -o name | wc -l | tr -d ' ')"
 [ "$n_good" -gt 0 ] && [ "$n_bad" -eq 0 ] && pass "podvolumebackups show the difference: $n_good against $n_bad" \

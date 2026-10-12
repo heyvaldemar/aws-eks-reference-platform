@@ -10,11 +10,14 @@
 #   argocd        no chart range and no Git branch as a source (check-argocd.py)
 #   policy-tests  every policy has a test that shows it a violation
 #   kyverno       the policy tests themselves (kyverno test)
+#   promtool      every PrometheusRule is valid PromQL, and the SLO alerts
+#                 pass their unit tests (tests/slo): a burn pages, a normal
+#                 error rate does not
 #
 # With no arguments every check runs, render first. A named check reuses
 # out/ if it is there. Exit status is the number of checks that failed.
 #
-# Tools: helm, kubectl, kubeconform, kube-linter, pluto, kyverno, python3 with
+# Tools: helm, kubectl, kubeconform, kube-linter, pluto, kyverno, promtool, python3 with
 # PyYAML. scripts/install-tools.sh installs the pinned versions.
 # The check_* functions are called by name from the loop at the bottom.
 # shellcheck disable=SC2329
@@ -79,7 +82,39 @@ check_policy_tests() { python3 scripts/check-policy-tests.py; }
 
 check_kyverno() { kyverno test policies/tests; }
 
-all=(render images kubeconform kube-linter pluto argocd policy-tests kyverno)
+check_promtool() {
+  # Every PrometheusRule in the rendered output, as a plain rule file. The
+  # demo's also lands where its unit tests expect it.
+  rm -rf .cache/rules && mkdir -p .cache/rules
+  python3 - "${ENVS[@]/#/out/}" <<'PY' || return 1
+import os, sys, yaml
+class L(yaml.SafeLoader): pass
+L.add_constructor("tag:yaml.org,2002:value", lambda l, n: l.construct_scalar(n))
+for d in sys.argv[1:]:
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".yaml"):
+            continue
+        for doc in yaml.load_all(open(os.path.join(d, f)), Loader=L):
+            if isinstance(doc, dict) and doc.get("kind") == "PrometheusRule":
+                name = "%s-%s.rules.yaml" % (os.path.basename(d), doc["metadata"]["name"])
+                yaml.safe_dump(doc["spec"], open(os.path.join(".cache/rules", name), "w"), sort_keys=False)
+                if doc["metadata"]["name"] == "demo-slo" and os.path.basename(d) == "kind":
+                    yaml.safe_dump(doc["spec"], open("tests/slo/demo-slo.rules.yaml", "w"), sort_keys=False)
+PY
+  # Rules this repository authors must also pass promtool's lint. The charts'
+  # own rules are only required to be valid: kube-prometheus-stack ships a
+  # duplicated apiserver recording rule that is upstream's to fix.
+  local ours=() upstream=() f
+  for f in .cache/rules/*.rules.yaml; do
+    case "$f" in *-demo-slo.rules.yaml) ours+=("$f") ;; *) upstream+=("$f") ;; esac
+  done
+  promtool check rules --lint=none "${upstream[@]}" >/dev/null || { promtool check rules --lint=none "${upstream[@]}"; return 1; }
+  promtool check rules --lint-fatal "${ours[@]}" || return 1
+  echo "${#upstream[@]} chart rule files valid, ${#ours[@]} of ours valid and lint-clean"
+  promtool test rules tests/slo/*.test.yaml
+}
+
+all=(render images kubeconform kube-linter pluto argocd policy-tests kyverno promtool)
 selected=("$@")
 [ ${#selected[@]} -eq 0 ] && selected=("${all[@]}")
 if [ ! -d out/kind ] && [[ " ${selected[*]} " != *" render "* ]]; then

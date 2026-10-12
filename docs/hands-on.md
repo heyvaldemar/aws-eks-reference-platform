@@ -128,7 +128,15 @@ Then confirm the 200, and that the generated default-deny comes back if you dele
 
 ## 3. A restore that said Completed
 
-**Set it up.** Write something worth losing, then take two backups, one after the other: one that copies volumes and one that does not.
+**Set it up.** The earlier exercises restarted the demo; let those rollouts finish first, because a pod still shutting down when a backup starts is a volume Velero cannot copy:
+
+```bash
+kubectl -n demo rollout status deployment/frontend
+kubectl -n demo rollout status statefulset/backend
+kubectl -n demo get pods   # nothing Terminating
+```
+
+Then write something worth losing, and take two backups, one after the other: one that copies volumes and one that does not.
 
 ```bash
 HASH=$(curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 \

@@ -165,6 +165,7 @@ TOOL_RELEASES = {
     "kube-linter": ("stackrox/kube-linter", r"(v\d+\.\d+\.\d+)"),
     "kyverno": ("kyverno/kyverno", r"(v\d+\.\d+\.\d+)"),
     "pluto": ("FairwindsOps/pluto", r"(v\d+\.\d+\.\d+)"),
+    "promtool": ("prometheus/prometheus", r"(v\d+\.\d+\.\d+)"),
 }
 
 

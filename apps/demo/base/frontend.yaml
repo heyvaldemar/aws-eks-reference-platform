@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: frontend
+      annotations:
+        # /tmp is scratch. Copying it into every backup only adds a volume
+        # that can fail to copy while a pod is shutting down.
+        backup.velero.io/backup-volumes-excludes: tmp
     spec:
       automountServiceAccountToken: false
       securityContext:

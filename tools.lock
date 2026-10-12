@@ -4,7 +4,7 @@
 # binary nobody here has run.
 #
 # Hashes were checked against each publisher's own checksum file where one
-# exists (kind, kubectl, helm, kubeconform, kyverno, pluto); kube-linter
+# exists (kind, kubectl, helm, kubeconform, kyverno, pluto, promtool); kube-linter
 # publishes Sigstore bundles instead.
 #
 # name  version  platform  url  member-in-archive  sha256
@@ -22,3 +22,5 @@ kyverno v1.19.1 linux-amd64 https://github.com/kyverno/kyverno/releases/download
 kyverno v1.19.1 darwin-arm64 https://github.com/kyverno/kyverno/releases/download/v1.19.1/kyverno-cli_v1.19.1_darwin_arm64.tar.gz kyverno 2cf5febbedaafca5d3c7819925a49f9723bf4c3337a1327b6f72970480af385a
 pluto v5.24.4 linux-amd64 https://github.com/FairwindsOps/pluto/releases/download/v5.24.4/pluto_5.24.4_linux_amd64.tar.gz pluto 1e5077ce1016fb0bb8ce0103c12b7ca8666eb3959d787ecfc95d9b8acd507147
 pluto v5.24.4 darwin-arm64 https://github.com/FairwindsOps/pluto/releases/download/v5.24.4/pluto_5.24.4_darwin_arm64.tar.gz pluto c79855761e6f313be94f7a80b66815443598102dbf51117641476465a0c539a9
+promtool v3.15.0 linux-amd64 https://github.com/prometheus/prometheus/releases/download/v3.15.0/prometheus-3.15.0.linux-amd64.tar.gz prometheus-3.15.0.linux-amd64/promtool 2a542df32eac02ee17b9d844fb2aa1de00dafa5476579ba8a3ba862e9d572ea0
+promtool v3.15.0 darwin-arm64 https://github.com/prometheus/prometheus/releases/download/v3.15.0/prometheus-3.15.0.darwin-arm64.tar.gz prometheus-3.15.0.darwin-arm64/promtool 920df4d17e78b3b0175af144eb318b0c74d1cf7b1d1251b326966f0e81977260

@@ -16,7 +16,9 @@
 #      admission controller scaled to zero (the policies are compiled into
 #      native ValidatingAdmissionPolicies); Argo CD then brings Kyverno back
 #   5. connections the network policies do not allow are refused
-#   6. metrics are scraped and traces arrive as span metrics
+#   6. metrics are scraped and traces arrive as span metrics; the demo's SLO
+#      rules are loaded, its dashboard is in Grafana, and when the frontend
+#      fails the fast-burn alert really fires
 #   7. Velero backs up the demo tenant, the namespace is deleted, and the
 #      restore brings back the marker written before the backup
 #
@@ -231,6 +233,53 @@ if [ -n "$calls" ] && [ "${calls%.*}" -gt 0 ] 2>/dev/null; then
 else
   fail "no span metrics for the frontend: traces are not arriving"
 fi
+
+step "6b. the SLO: rules loaded, dashboard present, and the page fires on a failure"
+promapi() { kubectl get --raw "/api/v1/namespaces/monitoring/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/$1" 2>/dev/null; }
+bad_rules="$(promapi rules | python3 -c '
+import json,sys
+groups=[g for g in json.load(sys.stdin)["data"]["groups"] if g["name"].startswith("demo-slo")]
+rules=[r for g in groups for r in g["rules"]]
+print(len(rules), sum(1 for r in rules if r.get("health")!="ok"))' 2>/dev/null)"
+if [ "${bad_rules:-0 0}" = "8 0" ]; then pass "Prometheus evaluates all 8 SLO rules without errors"; else
+  fail "SLO rules loaded and failing (count, unhealthy): '${bad_rules:-none}'"; fi
+
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 23000:80 >"$WORK/grafana-pf.log" 2>&1 &
+GF_PID=$!
+for _ in $(seq 1 30); do (exec 3<>/dev/tcp/127.0.0.1/23000) 2>/dev/null && break; sleep 1; done
+found=""
+for _ in $(seq 1 12); do
+  # The password is read into curl's stdin config, never onto a command line.
+  found="$(printf 'user = "admin:%s"\n' "$(kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d)" |
+    curl -s --max-time 10 --config - "http://127.0.0.1:23000/api/dashboards/uid/demo-slo" |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["dashboard"]["title"])' 2>/dev/null)"
+  [ -n "$found" ] && break
+  sleep 10
+done
+{ kill "$GF_PID"; wait "$GF_PID"; } 2>/dev/null
+if [ "$found" = "Demo service level objectives" ]; then pass "Grafana serves the SLO dashboard"; else
+  fail "Grafana does not serve the demo-slo dashboard"; fi
+
+# Make the frontend fail: podinfo answers /status/500 with a 500. Half a
+# minute of steady errors on top of the light traffic so far is far beyond a
+# 14.4x burn; the alert has `for: 2m`, so it should fire within about four.
+firing() { promapi alerts | python3 -c '
+import json,sys
+a=[x for x in json.load(sys.stdin)["data"]["alerts"] if x["labels"].get("alertname")=="DemoErrorBudgetBurnFast" and x["labels"].get("job")=="frontend"]
+print(a[0]["state"] if a else "none")' 2>/dev/null; }
+( end=$(( $(date +%s) + 480 )); while [ "$(date +%s)" -lt "$end" ]; do
+    gw -o /dev/null "https://$HOST:$HTTPS_PORT/status/500" 2>/dev/null; sleep 0.2
+  done ) &
+LOAD_PID=$!
+state="none"
+for _ in $(seq 1 48); do
+  state="$(firing)"
+  [ "$state" = firing ] && break
+  sleep 10
+done
+{ kill "$LOAD_PID"; wait "$LOAD_PID"; } 2>/dev/null
+if [ "$state" = firing ]; then pass "a failing frontend makes DemoErrorBudgetBurnFast fire"; else
+  fail "the frontend failed for eight minutes and the fast-burn alert is '$state', not firing"; fi
 
 # --- 7 -----------------------------------------------------------------------
 step "7. backup, delete the tenant, restore"
