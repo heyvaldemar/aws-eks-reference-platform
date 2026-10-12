@@ -233,8 +233,15 @@ else
 fi
 
 step "5b. tenants: onboarding from the template, and isolation between tenants"
-code_b="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve "team-b.$DOMAIN:$HTTPS_PORT:127.0.0.1" \
-  --cacert "$WORK/ca.crt" "https://team-b.$DOMAIN:$HTTPS_PORT/" 2>/dev/null)"
+# The same tunnel as every other call: checked first, restarted if it died.
+code_b=""
+for _ in $(seq 1 6); do
+  ensure_tunnel >/dev/null 2>&1
+  code_b="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve "team-b.$DOMAIN:$HTTPS_PORT:127.0.0.1" \
+    --cacert "$WORK/ca.crt" "https://team-b.$DOMAIN:$HTTPS_PORT/" 2>/dev/null)"
+  [ "$code_b" != 000 ] && break
+  sleep 5
+done
 if [ "$code_b" = 200 ]; then pass "team-b, made from apps/_template, answers on https://team-b.$DOMAIN"; else
   fail "team-b's route answered '$code_b', expected 200"; fi
 if kubectl -n team-b get networkpolicy default-deny >/dev/null 2>&1; then pass "team-b got its own generated default-deny"; else
