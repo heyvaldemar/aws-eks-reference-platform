@@ -9,7 +9,7 @@ Six controllers need AWS permissions (Karpenter, the load balancer controller, E
 
 ## Decision
 
-- **Workloads:** EKS Pod Identity. Terraform creates one IAM role per controller, trusted by `pods.eks.amazonaws.com`, and associates it with exactly one namespace and service account. The VPC CNI and EBS driver get theirs through their managed add-on's `pod_identity_association`; the node role has no CNI policy.
+- **Workloads:** EKS Pod Identity. Terraform creates one IAM role per controller, whose trust policy names `pods.eks.amazonaws.com`, and associates it with exactly one namespace and service account. The VPC CNI and EBS driver get theirs through their managed add-on's `pod_identity_association`; the node role has no CNI policy.
 - **People:** access entries only (`authentication_mode = "API"`), with `bootstrap_cluster_creator_admin_permissions = false`. The role running Terraform and any listed in `admin_principal_arns` get `AmazonEKSClusterAdminPolicy`; the access entry uses the IAM role, not its STS session ARN.
 - Nodes keep IMDSv2 with a hop limit of one, so a pod cannot borrow the node's role.
 
