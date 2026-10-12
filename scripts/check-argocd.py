@@ -43,11 +43,39 @@ def main(dirs):
             for doc in yaml.safe_load_all(f):
                 if not doc or doc.get("kind") != "ApplicationSet":
                     continue
+                for gen in doc["spec"]["generators"]:
+                    for child in gen.get("matrix", {}).get("generators", [gen]):
+                        git = child.get("git")
+                        if git and git.get("revision") != "{{ .metadata.annotations.platform_revision }}":
+                            bad.append("%s: a Git generator reading revision '%s'; it must be {{ .metadata.annotations.platform_revision }}"
+                                       % (fname, git.get("revision")))
                 spec = doc["spec"]["template"]["spec"]
                 for src in spec.get("sources") or [spec["source"]]:
                     if not src.get("chart") and src.get("targetRevision") != "{{ .metadata.annotations.platform_revision }}":
                         bad.append("%s: a Git source with targetRevision '%s'; it must be {{ .metadata.annotations.platform_revision }}"
                                    % (fname, src.get("targetRevision")))
+    # Tenants live under their own AppProject, which may create no
+    # cluster-scoped kind but its Namespace and may not target a platform
+    # namespace; a tenant under the platform project could create anything.
+    with open(os.path.join(appsets, "project.yaml"), encoding="utf-8") as f:
+        projects = {p["metadata"]["name"]: p for p in yaml.safe_load_all(f) if p}
+    with open(os.path.join(appsets, "tenants.yaml"), encoding="utf-8") as f:
+        tenants = next(d for d in yaml.safe_load_all(f) if d)
+    project = tenants["spec"]["template"]["spec"]["project"]
+    proj = projects.get(project, {}).get("spec", {})
+    if project != "tenants":
+        bad.append("tenants.yaml: tenants run under the '%s' project, not the restricted 'tenants' project" % project)
+    elif proj.get("clusterResourceWhitelist") != [{"group": "", "kind": "Namespace"}]:
+        bad.append("project tenants may create cluster-scoped kinds beyond its Namespace: %s" % proj.get("clusterResourceWhitelist"))
+    else:
+        denied = {d["namespace"] for d in proj.get("destinations", []) if str(d.get("namespace", "")).startswith("!")}
+        for ns in ("!argocd", "!kube-*", "!kyverno", "!monitoring", "!velero", "!gateway"):
+            if ns not in denied:
+                bad.append("project tenants does not deny the platform namespace %s" % ns[1:])
+        blocked = {(b.get("group"), b.get("kind")) for b in proj.get("namespaceResourceBlacklist", [])}
+        for kind in (("kyverno.io", "PolicyException"), ("policies.kyverno.io", "PolicyException")):
+            if kind not in blocked:
+                bad.append("project tenants lets a tenant create %s/%s, an exemption from admission policy" % kind)
     for line in bad:
         print("FLOATING  " + line)
     print("%d floating source(s)" % len(bad))

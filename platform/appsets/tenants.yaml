@@ -1,0 +1,72 @@
+# Tenants: one Application per directory under apps/, on every cluster.
+#
+# A team is onboarded by a pull request that adds apps/<team>/ (copied from
+# apps/_template, see docs/onboarding-a-tenant.md). No platform file changes:
+# this generator finds the directory at the cluster's revision, and the team
+# gets <team>.<domain> on the platform Gateway, its own namespace and the
+# platform's guardrails (Pod Security, admission policies, a default-deny
+# network policy). apps/demo is the tenant every e2e check runs against;
+# apps/team-b exists to prove tenants are isolated from each other.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenants
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  enable_argo_cd: "true"
+          - git:
+              repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+              revision: '{{ .metadata.annotations.platform_revision }}'
+              directories:
+                - path: apps/*
+                - path: apps/_template
+                  exclude: true
+  # A restore drill or an incident may need auto-sync off for a while; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: '{{ .path.basename }}'
+      labels:
+        platform.heyvaldemar.com/component: tenant
+        platform.heyvaldemar.com/tenant: '{{ .path.basename }}'
+    spec:
+      project: tenants
+      source:
+        repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+        targetRevision: '{{ .metadata.annotations.platform_revision }}'
+        path: '{{ .path.path }}/overlays/{{ .metadata.labels.environment }}'
+        kustomize:
+          patches:
+            - target:
+                kind: HTTPRoute
+              patch: |-
+                - op: replace
+                  path: /spec/hostnames
+                  value: ["{{ .path.basename }}.{{ .metadata.annotations.domain }}"]
+      destination:
+        name: '{{ .name }}'
+        namespace: '{{ .path.basename }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

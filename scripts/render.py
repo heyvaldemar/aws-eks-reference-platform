@@ -11,8 +11,10 @@ in this repository. The output is what CI lints, validates and scans for
 unpinned images, so a check that passes here is a check on the manifests the
 cluster receives, not on the files that produce them.
 
-Templating covers the subset of Go templates the ApplicationSets use:
-{{ .name }}, {{ .metadata.labels.X }}, {{ .metadata.annotations.X }} and
+Generators: clusters, a Git directory generator over this repository, and a
+matrix of the two. Templating covers the subset of Go templates the
+ApplicationSets use: {{ .name }}, {{ .metadata.labels.X }},
+{{ .metadata.annotations.X }}, {{ .path.path }}, {{ .path.basename }} and
 {{- if eq <ref> "literal" }} ... {{- else }} ... {{- end }}. Anything else in
 a template stops the render, so the subset cannot drift silently.
 
@@ -22,6 +24,8 @@ environment, falling back to SAMPLE below; EKS values that only exist after a
 
 Needs helm and kubectl on PATH. Charts are cached under .cache/charts.
 """
+import fnmatch
+import glob
 import json
 import os
 import re
@@ -134,12 +138,35 @@ def render_tree(node, ctx):
     return node
 
 
-def selected(appset, cluster):
-    for gen in appset["spec"]["generators"]:
-        sel = gen.get("clusters", {}).get("selector", {}).get("matchLabels", {})
-        if all(cluster["metadata"]["labels"].get(k) == v for k, v in sel.items()):
-            return True
-    return False
+def generate(gen, cluster):
+    """The parameter sets one generator produces for this cluster: the cluster
+    generator (filtered by its label selector), a Git directory generator over
+    this repository, and a matrix of the two."""
+    if "clusters" in gen:
+        sel = gen["clusters"].get("selector", {}).get("matchLabels", {})
+        ok = all(cluster["metadata"]["labels"].get(k) == v for k, v in sel.items())
+        return [dict(cluster)] if ok else []
+    if "git" in gen:
+        out = []
+        for d in gen["git"].get("directories", []):
+            if d.get("exclude"):
+                continue
+            for path in sorted(glob.glob(os.path.join(ROOT, d["path"]))):
+                if not os.path.isdir(path):
+                    continue
+                rel = os.path.relpath(path, ROOT)
+                if any(fnmatch.fnmatch(rel, x["path"]) for x in gen["git"]["directories"] if x.get("exclude")):
+                    continue
+                out.append({"path": {"path": rel, "basename": os.path.basename(rel)}})
+        return out
+    if "matrix" in gen:
+        first, second = gen["matrix"]["generators"]
+        out = []
+        for a in generate(first, cluster):
+            for b in generate(render_tree(second, a), cluster):
+                out.append({**a, **b})
+        return out
+    raise ValueError("unsupported generator: %s" % list(gen))
 
 
 def run(cmd, **kw):
@@ -213,11 +240,14 @@ def main():
     for name in sorted(os.listdir(appset_dir)):
         with open(os.path.join(appset_dir, name), encoding="utf-8") as f:
             for doc in yaml.safe_load_all(f):
-                if doc and doc.get("kind") == "ApplicationSet" and selected(doc, cluster):
-                    app = render_tree(doc["spec"]["template"], cluster)
-                    app = {"apiVersion": "argoproj.io/v1alpha1", "kind": "Application", **app}
-                    app["metadata"]["namespace"] = "argocd"
-                    apps.append(app)
+                if not doc or doc.get("kind") != "ApplicationSet":
+                    continue
+                for gen in doc["spec"]["generators"]:
+                    for params in generate(gen, cluster):
+                        app = render_tree(doc["spec"]["template"], params)
+                        app = {"apiVersion": "argoproj.io/v1alpha1", "kind": "Application", **app}
+                        app["metadata"]["namespace"] = "argocd"
+                        apps.append(app)
     with open(os.path.join(out, "_applications.yaml"), "w", encoding="utf-8") as f:
         yaml.safe_dump_all(apps, f, sort_keys=False)
     with tempfile.TemporaryDirectory() as tmp:

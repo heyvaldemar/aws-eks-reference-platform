@@ -18,3 +18,6 @@ terraform.rc
 # Kubeconfigs written by make targets.
 /kubeconfig*
 .DS_Store
+
+# Written by `make tunnel`.
+/platform-ca.crt

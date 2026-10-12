@@ -59,12 +59,20 @@ check_kubeconform() {
 }
 
 check_kube_linter() {
-  local files=()
+  # Every Application whose source is a path in this repository (the platform
+  # configuration, the object store, every tenant), not the upstream charts.
+  local files=() f
   for env in "${ENVS[@]}"; do
-    for app in demo object-store platform-config aws-config; do
-      [ -f "out/$env/$app.yaml" ] && files+=("out/$env/$app.yaml")
-    done
+    while IFS= read -r f; do files+=("$f"); done < <(python3 - "out/$env" <<'PY'
+import os, sys, yaml
+d = sys.argv[1]
+for a in yaml.safe_load_all(open(os.path.join(d, "_applications.yaml"))):
+    if a and any(s.get("path") for s in (a["spec"].get("sources") or [a["spec"]["source"]])):
+        print(os.path.join(d, a["metadata"]["name"] + ".yaml"))
+PY
+)
   done
+  echo "linting: ${files[*]}"
   kube-linter lint --config .kube-linter.yaml "${files[@]}"
 }
 

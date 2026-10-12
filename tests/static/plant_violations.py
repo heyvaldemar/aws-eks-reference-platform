@@ -40,7 +40,7 @@ def main():
             shutil.copytree(ROOT, work, dirs_exist_ok=True, symlinks=True,
                             ignore=shutil.ignore_patterns(".git", "kustomize", "schemas"))
             path = os.path.join(work, fname)
-            text = open(path, encoding="utf-8").read()
+            text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
             if old not in text:
                 print("  STALE   %-12s %s: the text it breaks is no longer in %s" % (check, what, fname))
                 stale += 1
