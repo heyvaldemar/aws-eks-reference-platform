@@ -41,7 +41,7 @@ until_true() {  # until_true <seconds> <command...>: retry every 5s
 
 # shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
-  for app in policies demo kyverno; do autosync "$app" on 2>/dev/null; done
+  for app in policies tenant-demo demo kyverno; do autosync "$app" on 2>/dev/null; done
   [ -n "$PF_PID" ] && { kill "$PF_PID"; wait "$PF_PID"; } 2>/dev/null
   rm -rf "$WORK"
 }
@@ -183,8 +183,14 @@ n_good="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$good
 n_bad="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$bad" -o name | wc -l | tr -d ' ')"
 [ "$n_good" -gt 0 ] && [ "$n_bad" -eq 0 ] && pass "podvolumebackups show the difference: $n_good against $n_bad" \
   || fail "podvolumebackups do not show the difference ($n_good against $n_bad)"
+autosync tenant-demo off
 autosync demo off
+pv="$(kubectl -n demo get pvc data-backend-0 -o jsonpath='{.spec.volumeName}')"
 kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
+# The guide waits for the volume itself to go, as it would in a real loss;
+# a restore that started earlier could find the old disk still there.
+kubectl wait --for=delete "pv/$pv" --timeout=180s >/dev/null 2>&1 && pass "the volume $pv is gone with the namespace" \
+  || fail "the volume $pv outlived its namespace"
 [ "$(restore "from-bad-$RUN" "$bad")" = Completed ] && pass "the restore from the bad backup says Completed" || fail "the bad restore did not complete"
 marker >/dev/null; got="$(cat "$WORK/body")"
 # "Gone" has to be the backend saying so (podinfo answers 500, reading file
@@ -196,8 +202,9 @@ kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
 marker >/dev/null; got="$(cat "$WORK/body")"
 [ "$got" = "written before the incident" ] && pass "and the marker is back" \
   || fail "the good restore did not bring the marker back: HTTP ${MARKER_CODE:-none} '${got:0:200}'"
+autosync tenant-demo on
 autosync demo on
-EXPECTED_APPS=demo "$ROOT/scripts/wait-for-platform.sh" 300 >/dev/null && pass "Argo CD finds the demo identical to Git" \
+EXPECTED_APPS="tenant-demo demo" "$ROOT/scripts/wait-for-platform.sh" 300 >/dev/null && pass "Argo CD finds the demo identical to Git" \
   || fail "the demo is not Synced and Healthy after the exercise"
 
 printf '\n'

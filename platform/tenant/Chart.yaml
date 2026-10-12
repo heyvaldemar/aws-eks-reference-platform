@@ -1,0 +1,10 @@
+# What the platform owns for every tenant: the namespace and its labels, the
+# quota, and the Argo CD project the tenant's own Application runs under.
+# platform/appsets/tenant-guardrails.yaml installs it once per directory under
+# apps/; the team's manifests never contain any of it, so a team cannot
+# relabel its namespace out of Pod Security or point itself at another one.
+apiVersion: v2
+name: tenant
+description: The namespace, quota and Argo CD project the platform owns for one tenant.
+type: application
+version: 1.0.0

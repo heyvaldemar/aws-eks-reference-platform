@@ -8,7 +8,6 @@ labels:
       app.kubernetes.io/part-of: team-b
     includeSelectors: false
 resources:
-  - namespace.yaml
   - app.yaml
   - route.yaml
   - network-policies.yaml

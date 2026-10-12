@@ -4,10 +4,12 @@ Velero backs up the demo tenant every night at 03:00 UTC (`schedules.daily-tenan
 
 ## Restore a namespace
 
-1. **Stop Argo CD from recreating it.** Otherwise it rebuilds the namespace empty the moment you delete it, and the restore collides with it.
+1. **Stop Argo CD from recreating it.** Otherwise it rebuilds the namespace empty the moment you delete it, and the restore collides with it. A tenant has two Applications: `tenant-<team>` owns the namespace, its quota and its project; `<team>` owns what runs inside. Pause both.
 
    ```bash
-   kubectl -n argocd patch application demo --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
+   for app in tenant-demo demo; do
+     kubectl -n argocd patch application "$app" --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
+   done
    ```
 
 2. **Pick the backup.**
@@ -50,14 +52,16 @@ Velero backs up the demo tenant every night at 03:00 UTC (`schedules.daily-tenan
 
    Then read something you know was there, through the Gateway (`make tunnel`).
 
-6. **Give the namespace back to Argo CD.**
+6. **Give the namespace back to Argo CD**, the namespace's owner first.
 
    ```bash
-   kubectl -n argocd patch application demo --type merge \
-     -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+   for app in tenant-demo demo; do
+     kubectl -n argocd patch application "$app" --type merge \
+       -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+   done
    ```
 
-   It should report `Synced` without changing anything: the restored objects are the ones in Git.
+   Both should report `Synced` without changing anything: the restored objects are the ones in Git.
 
 ## Volumes Velero skips
 

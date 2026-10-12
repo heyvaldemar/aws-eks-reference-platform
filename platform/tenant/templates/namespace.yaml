@@ -1,0 +1,13 @@
+# The tenant label is what the platform keys on: the admission policies apply
+# here, Kyverno generates a default-deny NetworkPolicy here, and the Gateway
+# accepts this namespace's routes. Pod Security restricted is mandatory for a
+# tenant (policies/require-restricted-tenant.yaml), and only the platform
+# writes this object.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "tenant.name" . }}
+  labels:
+    platform.heyvaldemar.com/tenant: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

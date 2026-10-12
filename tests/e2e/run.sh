@@ -40,9 +40,11 @@ failed=0
 
 # shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
-  # Never leave Kyverno with auto-sync off, whatever failed.
-  kubectl -n argocd patch application kyverno --type merge \
-    -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null 2>&1
+  # Never leave an Application with auto-sync off, whatever failed.
+  for app in kyverno tenant-demo demo; do
+    kubectl -n argocd patch application "$app" --type merge \
+      -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null 2>&1
+  done
   [ -n "$PF_PID" ] && { kill "$PF_PID"; wait "$PF_PID"; } 2>/dev/null
   kubectl delete namespace e2e-probe --ignore-not-found --wait=false >/dev/null 2>&1
   rm -rf "$WORK"
@@ -263,38 +265,70 @@ else
 fi
 kubectl -n team-b delete externalsecret e2e-borrowed-secret --ignore-not-found >/dev/null
 
-# A tenant that points its Application at a platform namespace is refused by
-# Argo CD itself: the tenants AppProject denies those destinations.
+# A tenant's project is made by the platform, and its one destination is the
+# tenant's own namespace. Two ways out, both refused by Argo CD before the API
+# server sees anything: an Application aimed at a platform namespace, and
+# manifests that name another tenant's namespace (here through Kustomize's
+# namespace override, which a team could equally write in its own
+# kustomization.yaml).
 repo="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.repoURL}')"
 rev="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.targetRevision}')"
-kubectl apply -f - >/dev/null <<EOF
+escape() {  # escape <name> <destination namespace> <namespace in the manifests>: what Argo CD said
+  kubectl apply -f - >/dev/null <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: e2e-tenant-escape
+  name: $1
   namespace: argocd
 spec:
-  project: tenants
+  project: tenant-team-b
   source:
     repoURL: $repo
     targetRevision: $rev
     path: apps/team-b/overlays/kind
+    kustomize:
+      namespace: $3
   destination:
     name: in-cluster
-    namespace: kube-system
+    namespace: $2
+  syncPolicy:
+    automated: {}
 EOF
-escape=""
-for _ in $(seq 1 12); do
-  escape="$(kubectl -n argocd get application e2e-tenant-escape -o jsonpath='{.status.conditions[*].message}' 2>/dev/null)"
-  [ -n "$escape" ] && break
-  sleep 5
-done
-if grep -qiE "not permitted|denied" <<<"$escape" && [ -z "$(kubectl -n kube-system get deployment app -o name 2>/dev/null)" ]; then
-  pass "a tenant Application aimed at kube-system is refused by the tenants project"
+  local msg=""
+  for _ in $(seq 1 24); do
+    msg="$(kubectl -n argocd get application "$1" -o json 2>/dev/null | python3 -c '
+import json,sys
+s=json.load(sys.stdin).get("status",{})
+out=[c.get("message","") for c in s.get("conditions",[])]
+op=s.get("operationState") or {}
+out.append(op.get("message",""))
+out+=[r.get("message","") for r in (op.get("syncResult") or {}).get("resources",[])]
+print(" | ".join(m for m in out if m))' 2>/dev/null)"
+    grep -qi "not permitted" <<<"$msg" && break
+    sleep 5
+  done
+  kubectl -n argocd delete application "$1" --ignore-not-found --wait=false >/dev/null
+  echo "$msg"
+}
+msg="$(escape e2e-tenant-escape kube-system kube-system)"
+if grep -qi "not permitted" <<<"$msg" && [ -z "$(kubectl -n kube-system get deployment app -o name 2>/dev/null)" ]; then
+  pass "an Application of team-b's aimed at kube-system is refused by its project"
 else
-  fail "a tenant Application aimed at kube-system was not refused: '${escape:-no condition}'"
+  fail "an Application of team-b's aimed at kube-system was not refused: '${msg:-no message}'"
 fi
-kubectl -n argocd delete application e2e-tenant-escape --ignore-not-found --wait=false >/dev/null
+msg="$(escape e2e-tenant-crossing team-b demo)"
+if grep -qi "not permitted" <<<"$msg" && [ -z "$(kubectl -n demo get deployment app -o name 2>/dev/null)" ]; then
+  pass "team-b's manifests pointed at the demo namespace are refused by its project"
+else
+  fail "team-b's manifests pointed at the demo namespace were not refused: '${msg:-no message}'"
+fi
+quota="$(kubectl -n team-b get resourcequota tenant -o jsonpath='{.spec.hard.services\.loadbalancers}' 2>/dev/null)"
+owner="$(kubectl get namespace team-b -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)"
+if [ "$quota" = 0 ] && [[ "$owner" == tenant-team-b:* ]]; then
+  pass "team-b's namespace and quota belong to the platform (tenant-team-b), not to the team"
+else
+  fail "team-b's namespace is tracked by '${owner:-nothing}', its quota allows '${quota:-no quota}' load balancers"
+fi
 
 # --- 6 -----------------------------------------------------------------------
 step "6. metrics and traces"
@@ -409,8 +443,11 @@ else
   pass "marker written to the backend's volume through the Gateway"
   name="e2e-$(date +%s)"
   # Argo CD would recreate the namespace the moment it is deleted; a restore
-  # is done with the tenant's auto-sync off, as docs/runbooks/restore.md says.
-  kubectl -n argocd patch application demo --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}' >/dev/null
+  # is done with both of the tenant's Applications paused (the namespace is
+  # tenant-demo's, what runs in it is demo's), as docs/runbooks/restore.md says.
+  for app in tenant-demo demo; do
+    kubectl -n argocd patch application "$app" --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}' >/dev/null
+  done
   kubectl apply -f - >/dev/null <<EOF
 apiVersion: velero.io/v1
 kind: Backup
@@ -431,11 +468,15 @@ EOF
   volumes="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$name" -o name | wc -l | tr -d ' ')"
   if [ "$phase" = Completed ] && [ "$volumes" -gt 0 ]; then
     pass "backup $name Completed with $volumes pod volume(s)"
+    # The volume has to be gone too, or a restore could read the old disk
+    # back and pass without Velero copying anything.
+    pv="$(kubectl -n demo get pvc data-backend-0 -o jsonpath='{.spec.volumeName}')"
     kubectl delete namespace demo --wait=true --timeout=5m >/dev/null
-    if kubectl get namespace demo >/dev/null 2>&1; then
-      fail "namespace demo is still there after delete"
+    kubectl wait --for=delete "pv/$pv" --timeout=180s >/dev/null 2>&1
+    if kubectl get namespace demo >/dev/null 2>&1 || kubectl get pv "$pv" >/dev/null 2>&1; then
+      fail "namespace demo or its volume $pv is still there after delete"
     else
-      pass "namespace demo deleted, volume and all"
+      pass "namespace demo deleted, and its volume $pv with it"
       kubectl apply -f - >/dev/null <<EOF
 apiVersion: velero.io/v1
 kind: Restore
@@ -486,12 +527,14 @@ EOF
   else
     fail "backup $name ended '$phase' with $volumes pod volume(s)"
   fi
-  kubectl -n argocd patch application demo --type merge \
-    -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null
-  if EXPECTED_APPS=demo "$HERE/../../scripts/wait-for-platform.sh" 300 >/dev/null; then
+  for app in tenant-demo demo; do
+    kubectl -n argocd patch application "$app" --type merge \
+      -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}' >/dev/null
+  done
+  if EXPECTED_APPS="tenant-demo demo" "$HERE/../../scripts/wait-for-platform.sh" 300 >/dev/null; then
     pass "Argo CD finds the restored tenant identical to Git"
   else
-    fail "after the restore Argo CD does not report demo Synced and Healthy"
+    fail "after the restore Argo CD does not report tenant-demo and demo Synced and Healthy"
   fi
 fi
 

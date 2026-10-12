@@ -6,8 +6,8 @@
 
 Reads platform/clusters/<env>.env, runs every ApplicationSet in
 platform/appsets/ against it, and writes what each generated Application
-would apply: `helm template` for chart sources, `kubectl kustomize` for paths
-in this repository. The output is what CI lints, validates and scans for
+would apply: `helm template` for chart sources and for paths in this
+repository that hold a Chart.yaml, `kubectl kustomize` for other paths. The output is what CI lints, validates and scans for
 unpinned images, so a check that passes here is a check on the manifests the
 cluster receives, not on the files that produce them.
 
@@ -177,6 +177,10 @@ def run(cmd, **kw):
 
 
 def chart_dir(src):
+    if not src.get("chart"):
+        # A chart in this repository, as Argo CD detects it: a path with a
+        # Chart.yaml in it.
+        return os.path.join(ROOT, src["path"])
     repo, chart, version = src["repoURL"], src["chart"], str(src["targetRevision"])
     dest = os.path.join(CACHE, chart, version)
     if not os.path.isdir(os.path.join(dest, chart)):
@@ -259,7 +263,7 @@ def main():
             for src in sources:
                 if src.get("ref"):
                     continue
-                if src.get("chart"):
+                if src.get("chart") or os.path.exists(os.path.join(ROOT, src["path"], "Chart.yaml")):
                     docs.append(render_helm(app, src, refs, tmp))
                 else:
                     docs.append(render_kustomize(app, src, tmp))

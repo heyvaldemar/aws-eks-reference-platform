@@ -1,0 +1,53 @@
+# Set per tenant by platform/appsets/tenant-guardrails.yaml: the directory
+# name under apps/, the cluster Secret's name and the platform repository.
+# Empty here, so a render without them fails instead of guessing.
+name: ""
+cluster: ""
+repoURL: ""
+
+# A tenant's directory name becomes a namespace, an AppProject (tenant-<name>)
+# and an Application (<name>). The names below are the platform's own
+# namespaces and Applications; a directory that takes one fails to render,
+# and the tenant's Application is never created because its project never
+# is. Names starting with kube- or tenant- are refused as well.
+# scripts/check-argocd.py fails when a platform namespace or Application
+# is missing from this list.
+reserved:
+  - argo-cd
+  - argocd
+  - aws-config
+  - aws-load-balancer-controller
+  - cert-manager
+  - default
+  - envoy-gateway
+  - envoy-gateway-system
+  - external-dns
+  - external-secrets
+  - gateway
+  - karpenter
+  - kube-prometheus-stack
+  - kyverno
+  - local-path-storage
+  - monitoring
+  - object-store
+  - opentelemetry-collector
+  - platform
+  - platform-config
+  - policies
+  - velero
+
+# What one tenant may request in total. Every container already has to
+# declare CPU and memory requests and a memory limit (policies/), so the
+# quota can count them. No LimitRange: its defaults would fill in what a
+# team left out, and the admission policy that refuses a container without
+# limits would never see one. A LoadBalancer or NodePort Service is the
+# Gateway's job, so a tenant gets none.
+quota:
+  requests.cpu: "2"
+  requests.memory: 4Gi
+  limits.memory: 8Gi
+  pods: "50"
+  persistentvolumeclaims: "10"
+  requests.storage: 50Gi
+  services.loadbalancers: "0"
+  services.nodeports: "0"

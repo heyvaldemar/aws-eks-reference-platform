@@ -21,13 +21,13 @@ Every line below is a check that fails the build when the claim stops being true
 | Admission refuses a tag-only image, a container without limits, a Deployment without probes, a privileged pod, a tenant namespace without Pod Security | five planted manifests, each refused by the policy named in it, and one compliant control that must be admitted | daily |
 | Admission stays closed when Kyverno is down | the same plants with Kyverno's admission controller scaled to zero | daily |
 | Network policies deny what they do not allow | three connections that must fail, with a control that must succeed | daily |
-| A team is onboarded by adding one directory, and tenants are isolated | `apps/team-b`, made from `apps/_template`, answers on its own hostname, gets its own default-deny, is refused the store that serves another tenant's secrets, and a tenant Application aimed at a platform namespace is refused by Argo CD | daily |
+| A team is onboarded by adding one directory, and tenants are isolated | `apps/team-b`, made from `apps/_template`, answers on its own hostname, gets its own default-deny, is refused the store that serves another tenant's secrets, and its own Argo CD project refuses an Application aimed at `kube-system` and manifests aimed at the `demo` namespace; the namespace and its quota are the platform's, not the team's | daily |
 | Metrics are scraped and traces arrive | PromQL for the demo's targets and its span metrics | daily |
 | The demo's SLO pages when it should | burn-rate rules unit-tested with promtool (a burn pages, a normal error rate does not), then the frontend is made to fail in the cluster and the page must fire | every change, daily |
 | A deleted namespace comes back with its data | Velero backup, `kubectl delete namespace`, restore, then a marker written before the backup is read back | daily |
 | An upgrade from the previous release keeps data | previous release installed, marker written, cluster moved to the new commit, marker read | every change, from the first release after v1.0.0 |
 | The EKS Terraform keeps its security posture | `terraform test` on a mocked plan; 24 planted violations, each must fail it | every change |
-| Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 15 planted violations across all static checks | every change |
+| Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 21 planted violations across all static checks | every change |
 | No pin silently falls behind | every chart, image, tool and provider compared with upstream | weekly |
 | The hands-on guide works as written | its three break-and-fix exercises run with every symptom, diagnosis and fix checked | weekly, and on any change to the guide |
 
@@ -146,6 +146,7 @@ Not in the table: Karpenter's nodes for workloads (Spot first), NAT and load bal
 ```text
 platform/clusters/    one file per kind of cluster: labels and annotations
 platform/appsets/     one ApplicationSet per add-on, plus the AppProject
+platform/tenant/      what the platform owns per tenant: namespace, quota, Argo CD project
 platform/values/      per add-on: images.yaml (pins), common.yaml, kind.yaml, eks.yaml
 manifests/            the platform's own configuration (Gateway, issuers, secret store)
 policies/             Kyverno policies, each with a test that shows it a violation

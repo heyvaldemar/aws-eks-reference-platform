@@ -10,7 +10,6 @@ labels:
       app.kubernetes.io/part-of: demo
     includeSelectors: false
 resources:
-  - namespace.yaml
   - message.yaml
   - frontend.yaml
   - backend.yaml

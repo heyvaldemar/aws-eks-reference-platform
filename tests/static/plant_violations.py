@@ -45,6 +45,8 @@ def main():
                 print("  STALE   %-12s %s: the text it breaks is no longer in %s" % (check, what, fname))
                 stale += 1
                 continue
+            # An empty `old` plants a new file, in a new directory if need be.
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
             checks = (["render"] if check in NEEDS_RENDER else []) + [check]
             r = subprocess.run([os.path.join(work, "scripts", "validate.sh")] + checks,

@@ -1,6 +1,7 @@
-# A tenant: its namespace, one service, its route and the network paths it
-# needs. Replace TEAM everywhere with the team's name (lowercase, a DNS
-# label), which is also the directory name under apps/.
+# A tenant: one service, its route and the network paths it needs. Replace
+# TEAM everywhere with the team's name (lowercase, a DNS label), which is
+# also the directory name under apps/. The namespace is not here: the
+# platform creates it, labelled and under quota (platform/tenant).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: TEAM
@@ -9,7 +10,6 @@ labels:
       app.kubernetes.io/part-of: TEAM
     includeSelectors: false
 resources:
-  - namespace.yaml
   - app.yaml
   - route.yaml
   - network-policies.yaml

@@ -1,0 +1,67 @@
+# What the platform owns for each tenant: one Application per directory under
+# apps/, on every cluster, installing platform/tenant (the namespace, its
+# quota, and the AppProject the tenant's own Application runs under).
+#
+# Same generator as tenants.yaml. The tenant's Application cannot sync before
+# its project exists, so its first sync always lands in a namespace this
+# Application has already labelled.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenant-guardrails
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  enable_argo_cd: "true"
+          - git:
+              repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+              revision: '{{ .metadata.annotations.platform_revision }}'
+              directories:
+                - path: apps/*
+                - path: apps/_template
+                  exclude: true
+  # A restore drill pauses both of a tenant's Applications; the
+  # ApplicationSet leaves that switch alone instead of flipping it back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
+  template:
+    metadata:
+      name: 'tenant-{{ .path.basename }}'
+      labels:
+        platform.heyvaldemar.com/component: tenant-guardrails
+        platform.heyvaldemar.com/tenant: '{{ .path.basename }}'
+    spec:
+      project: platform
+      source:
+        repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+        targetRevision: '{{ .metadata.annotations.platform_revision }}'
+        path: platform/tenant
+        helm:
+          valuesObject:
+            name: '{{ .path.basename }}'
+            cluster: '{{ .name }}'
+            repoURL: '{{ .metadata.annotations.platform_repo_url }}'
+      destination:
+        name: '{{ .name }}'
+        namespace: '{{ .path.basename }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 20
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

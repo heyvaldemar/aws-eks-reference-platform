@@ -160,11 +160,15 @@ done
 
 One at a time on purpose: copying volumes is CPU-heavy, and on a laptop two at once can starve the API server.
 
-**Break it.** Lose the namespace, and restore from the wrong backup.
+**Break it.** Lose the namespace and its volume, and restore from the wrong backup. Two Applications own the tenant, `tenant-demo` (the namespace, its quota and its project) and `demo` (what runs in it); both are paused, or Argo CD recreates the namespace empty the moment it is gone.
 
 ```bash
-kubectl -n argocd patch application demo --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
+for app in tenant-demo demo; do
+  kubectl -n argocd patch application "$app" --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'
+done
+PV=$(kubectl -n demo get pvc data-backend-0 -o jsonpath='{.spec.volumeName}')
 kubectl delete namespace demo --wait=true
+kubectl wait --for=delete pv/$PV --timeout=3m   # the disk is gone, as in a real loss
 kubectl apply -f - <<EOF
 apiVersion: velero.io/v1
 kind: Restore
@@ -205,8 +209,10 @@ EOF
 kubectl -n velero get restore hands-on-from-good -w
 kubectl -n demo rollout status statefulset/backend
 curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 https://demo.platform.test:8443/store/$HASH
-kubectl -n argocd patch application demo --type merge \
-  -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+for app in tenant-demo demo; do
+  kubectl -n argocd patch application "$app" --type merge \
+    -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+done
 ```
 
 The lesson the e2e run is built on: a restore is proven by reading the data back, never by its status.

@@ -7,7 +7,8 @@
 #                 against the CRDs the platform itself installs, strictly
 #   kube-linter   the manifests this repository authors (.kube-linter.yaml)
 #   pluto         no API removed or deprecated as of 1.37
-#   argocd        no chart range and no Git branch as a source (check-argocd.py)
+#   argocd        no chart range and no Git branch as a source; every tenant
+#                 confined to its own namespace (check-argocd.py)
 #   policy-tests  every policy has a test that shows it a violation
 #   kyverno       the policy tests themselves (kyverno test)
 #   promtool      every PrometheusRule is valid PromQL, and the SLO alerts
