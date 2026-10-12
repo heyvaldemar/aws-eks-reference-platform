@@ -1,6 +1,6 @@
 # 5. Admission policies the API server enforces itself
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

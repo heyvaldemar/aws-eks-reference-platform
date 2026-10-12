@@ -1,6 +1,6 @@
 # 13. Service level objectives that are proven to page
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-12
 
 ## Context

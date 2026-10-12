@@ -1,6 +1,6 @@
 # 3. EKS Pod Identity and access entries; no IRSA, no aws-auth
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

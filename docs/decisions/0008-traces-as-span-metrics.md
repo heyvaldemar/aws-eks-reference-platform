@@ -1,6 +1,6 @@
 # 8. Traces become span metrics; no tracing backend yet
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

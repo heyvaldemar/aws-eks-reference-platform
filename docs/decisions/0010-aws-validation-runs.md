@@ -1,6 +1,6 @@
 # 10. AWS validation runs: guards and cost reporting
 
-- Status: proposed (design only; nothing in this ADR is built or enabled)
+- Status: accepted, design only (nothing in this ADR is built or enabled until the owner says so)
 - Date: 2026-10-11
 
 ## Context

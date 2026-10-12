@@ -1,6 +1,6 @@
 # 7. Velero file-system backup on kind and on EKS
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

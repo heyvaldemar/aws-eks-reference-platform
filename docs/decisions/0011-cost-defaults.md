@@ -1,6 +1,6 @@
 # 11. Cost defaults: one NAT gateway, Graviton, standard support only
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

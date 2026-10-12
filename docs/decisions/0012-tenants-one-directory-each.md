@@ -1,6 +1,6 @@
 # 12. Tenants: one directory each, one project each
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-12
 
 ## Context

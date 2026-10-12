@@ -1,6 +1,6 @@
 # 1. Argo CD ApplicationSets keyed on the cluster Secret
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context

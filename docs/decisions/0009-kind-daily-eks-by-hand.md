@@ -1,6 +1,6 @@
 # 9. kind is the daily proof; EKS is validated by hand before releases
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context
