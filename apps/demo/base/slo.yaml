@@ -5,7 +5,10 @@
 #   latency       99% of requests answer within 500 ms
 #
 # Health and readiness probes are not requests anyone made, so they are left
-# out of both. Alerts follow the multi-window, multi-burn-rate method of the
+# out of both. A 5xx is what the service says, not what happened: podinfo
+# answers a handler error such as a missing /store file with HTTP 200 and
+# {"code": 500, ...} in the body, and this objective counts that as good. A
+# service measured this way has to return the status it means. Alerts follow the multi-window, multi-burn-rate method of the
 # Google SRE workbook: page when the budget burns fast enough to be gone in
 # about two days (14.4x over 1h, confirmed over 5m), open a ticket when it
 # would be gone in about five (6x over 6h, confirmed over 30m).

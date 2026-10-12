@@ -40,9 +40,15 @@ CLUSTER_SCOPED = {
     "ClusterPolicy", "ValidatingPolicy", "GeneratingPolicy", "MutatingPolicy", "ImageValidatingPolicy",
     "GatewayClass", "NodePool", "EC2NodeClass", "APIService", "CSIDriver",
 }
-# What a tenant's project must keep out of its namespace.
-TENANT_BLOCKED = [("", "ResourceQuota"), ("", "LimitRange"), ("kyverno.io", "PolicyException"),
-                  ("policies.kyverno.io", "PolicyException"), ("gateway.networking.k8s.io", "Gateway")]
+# Kinds a tenant's project may never allow: each would loosen the
+# platform's hold on the namespace (RBAC can grant a team the rights to edit
+# its own quota through the API) or route around the platform (secrets
+# outside the store, a Gateway with its own load balancer).
+TENANT_FORBIDDEN = {("", "ResourceQuota"), ("", "LimitRange"), ("", "Secret"), ("", "Pod"),
+                    ("rbac.authorization.k8s.io", "Role"), ("rbac.authorization.k8s.io", "RoleBinding"),
+                    ("kyverno.io", "PolicyException"), ("policies.kyverno.io", "PolicyException"),
+                    ("kyverno.io", "Policy"), ("external-secrets.io", "SecretStore"),
+                    ("gateway.networking.k8s.io", "Gateway"), ("gateway.networking.k8s.io", "ReferenceGrant")}
 
 
 class Loader(yaml.SafeLoader):
@@ -86,11 +92,15 @@ def check_tenants(dirs, appsets):
         role = {a["metadata"]["name"]: a["metadata"].get("labels", {}).get("platform.heyvaldemar.com/component") for a in apps}
         platform_names = {"platform"} | {n for n, r in role.items() if r not in ("tenant", "tenant-guardrails")}
         platform_namespaces = set()
+        allowed_kinds = {}
+        # Guardrails first: a tenant's kinds are checked against its project.
+        apps.sort(key=lambda a: role[a["metadata"]["name"]] != "tenant-guardrails")
         for a in apps:
             name = a["metadata"]["name"]
             ns = a["spec"]["destination"]["namespace"]
             docs = load(os.path.join(d, name + ".yaml"))
             if role[name] == "tenant":
+                allowed = allowed_kinds.get(name, set())
                 for doc in docs:
                     kind, meta = doc.get("kind"), doc.get("metadata", {})
                     where = "%s/%s: %s/%s" % (env, name, kind, meta.get("name"))
@@ -98,6 +108,9 @@ def check_tenants(dirs, appsets):
                         bad.append("%s is cluster-scoped; a tenant's directory holds only what runs inside its namespace" % where)
                     elif meta.get("namespace", ns) != ns:
                         bad.append("%s is in namespace %s; a tenant writes only to its own (%s)" % (where, meta.get("namespace"), ns))
+                    group = doc.get("apiVersion", "").rpartition("/")[0]
+                    if kind not in CLUSTER_SCOPED and (group, kind) not in allowed:
+                        bad.append("%s is a kind project tenant-%s does not allow; add it to allowedKinds in platform/tenant/values.yaml, or leave it out" % (where, name))
                 if a["spec"]["project"] != "tenant-" + name:
                     bad.append("%s/%s: runs under project %s, not tenant-%s" % (env, name, a["spec"]["project"], name))
                 continue
@@ -116,10 +129,15 @@ def check_tenants(dirs, appsets):
                     bad.append("project tenant-%s may create cluster-scoped kinds: %s" % (tenant, spec["clusterResourceWhitelist"]))
                 if any("*" in r for r in spec.get("sourceRepos", [])):
                     bad.append("project tenant-%s takes manifests from a wildcard source %s" % (tenant, spec["sourceRepos"]))
-                blocked = {(b.get("group"), b.get("kind")) for b in spec.get("namespaceResourceBlacklist", [])}
-                for kind in TENANT_BLOCKED:
-                    if kind not in blocked:
-                        bad.append("project tenant-%s lets the tenant create %s/%s" % ((tenant,) + kind))
+                white = {(w.get("group"), w.get("kind")) for w in spec.get("namespaceResourceWhitelist") or []}
+                if not white:
+                    bad.append("project tenant-%s has no namespaceResourceWhitelist; every namespaced kind is allowed" % tenant)
+                for group, kind in sorted(white):
+                    if "*" in group or "*" in kind:
+                        bad.append("project tenant-%s allows a wildcard kind %s/%s" % (tenant, group, kind))
+                    elif (group, kind) in TENANT_FORBIDDEN:
+                        bad.append("project tenant-%s lets the tenant create %s/%s" % (tenant, group, kind))
+                allowed_kinds[tenant] = white
                 labels = spaces[0].get("metadata", {}).get("labels", {}) if spaces else {}
                 if labels.get("platform.heyvaldemar.com/tenant") != "true" or labels.get("pod-security.kubernetes.io/enforce") != "restricted":
                     bad.append("%s/%s: namespace %s is not labelled as a restricted tenant: %s" % (env, name, tenant, labels))

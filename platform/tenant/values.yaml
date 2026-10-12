@@ -36,6 +36,31 @@ reserved:
   - policies
   - velero
 
+# The kinds a tenant's directory may hold, and nothing else. An allow-list,
+# not a deny-list: a kind nobody thought of is refused until someone adds it
+# here in a platform change. Left out on purpose: Role and RoleBinding (a
+# team that could bind itself admin in its namespace could edit the quota
+# through the API), Secret (secrets come from the store), SecretStore,
+# ResourceQuota and LimitRange, Kyverno policies and exceptions, and Gateway
+# (a Gateway of its own gets its own load balancer).
+allowedKinds:
+  - {group: "", kind: ConfigMap}
+  - {group: "", kind: PersistentVolumeClaim}
+  - {group: "", kind: Service}
+  - {group: "", kind: ServiceAccount}
+  - {group: apps, kind: Deployment}
+  - {group: apps, kind: StatefulSet}
+  - {group: autoscaling, kind: HorizontalPodAutoscaler}
+  - {group: batch, kind: CronJob}
+  - {group: batch, kind: Job}
+  - {group: external-secrets.io, kind: ExternalSecret}
+  - {group: gateway.networking.k8s.io, kind: HTTPRoute}
+  - {group: monitoring.coreos.com, kind: PodMonitor}
+  - {group: monitoring.coreos.com, kind: PrometheusRule}
+  - {group: monitoring.coreos.com, kind: ServiceMonitor}
+  - {group: networking.k8s.io, kind: NetworkPolicy}
+  - {group: policy, kind: PodDisruptionBudget}
+
 # What one tenant may request in total. Every container already has to
 # declare CPU and memory requests and a memory limit (policies/), so the
 # quota can count them. No LimitRange: its defaults would fill in what a

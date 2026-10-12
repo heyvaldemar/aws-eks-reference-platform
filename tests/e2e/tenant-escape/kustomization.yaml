@@ -1,0 +1,8 @@
+# What a team would commit to make itself admin of its namespace. Never
+# deployed: tests/e2e/run.sh points an Application of team-b's project at
+# this directory and requires Argo CD to refuse it, because RoleBinding is
+# not on the tenant's allow-list (platform/tenant/values.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - rolebinding.yaml

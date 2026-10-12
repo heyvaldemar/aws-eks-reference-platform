@@ -1,9 +1,9 @@
 # The tenant's Argo CD project. It grants what a team needs and nothing a
 # platform needs: manifests from the platform repository only, one
-# destination (its own namespace), no cluster-scoped kind at all, and none of
-# the namespaced kinds that would loosen the platform's hold on it. A
-# manifest in apps/<team>/ that names another namespace, or a
-# ClusterRoleBinding, is refused by Argo CD before the API server sees it.
+# destination (its own namespace), no cluster-scoped kind at all, and only
+# the namespaced kinds in allowedKinds (values.yaml). A manifest in
+# apps/<team>/ that names another namespace, a ClusterRoleBinding or a
+# RoleBinding is refused by Argo CD before the API server sees it.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -16,20 +16,10 @@ spec:
   destinations:
     - name: {{ required "cluster: the cluster Secret's name" .Values.cluster | quote }}
       namespace: {{ include "tenant.name" . }}
-  namespaceResourceBlacklist:
-    # The quota is the platform's.
-    - group: ""
-      kind: ResourceQuota
-    - group: ""
-      kind: LimitRange
-    # An exemption from admission policy.
-    - group: kyverno.io
-      kind: PolicyException
-    - group: policies.kyverno.io
-      kind: PolicyException
-    # A Gateway of its own would get its own load balancer from Envoy
-    # Gateway, outside the quota and the platform's certificate.
-    - group: gateway.networking.k8s.io
-      kind: Gateway
+  namespaceResourceWhitelist:
+    {{- range .Values.allowedKinds }}
+    - group: {{ .group | quote }}
+      kind: {{ .kind }}
+    {{- end }}
   orphanedResources:
     warn: true

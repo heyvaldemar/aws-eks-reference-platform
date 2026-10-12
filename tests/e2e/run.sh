@@ -18,12 +18,16 @@
 #   5. connections the network policies do not allow are refused
 #   5b. a second tenant (apps/team-b, made from apps/_template) is served on
 #      its own hostname, gets its own default-deny, and cannot read secrets
-#      through the store the platform reserves for another tenant
+#      through the store the platform reserves for another tenant; its Argo
+#      CD project refuses an Application aimed at kube-system, manifests
+#      aimed at the demo namespace and a RoleBinding to admin, and its
+#      namespace belongs to the platform
 #   6. metrics are scraped and traces arrive as span metrics; the demo's SLO
 #      rules are loaded, its dashboard is in Grafana, and when the frontend
 #      fails the fast-burn alert really fires
-#   7. Velero backs up the demo tenant, the namespace is deleted, and the
-#      restore brings back the marker written before the backup
+#   7. Velero backs up the demo tenant, the namespace and its volume are
+#      deleted, and the restore brings back the marker written before the
+#      backup
 #
 # Needs kubectl, curl and python3. Writes a summary to $GITHUB_STEP_SUMMARY
 # when it is set.
@@ -266,14 +270,19 @@ fi
 kubectl -n team-b delete externalsecret e2e-borrowed-secret --ignore-not-found >/dev/null
 
 # A tenant's project is made by the platform, and its one destination is the
-# tenant's own namespace. Two ways out, both refused by Argo CD before the API
-# server sees anything: an Application aimed at a platform namespace, and
+# tenant's own namespace. Three ways out, all refused by Argo CD before the
+# API server sees anything: an Application aimed at a platform namespace,
 # manifests that name another tenant's namespace (here through Kustomize's
 # namespace override, which a team could equally write in its own
-# kustomization.yaml).
+# kustomization.yaml), and a RoleBinding that would make the team admin of
+# its namespace (not a kind on its project's allow-list).
+# Argo CD words a refusal two ways: a destination outside the project "does
+# not match any of the allowed destinations"; a resource the project does not
+# allow "is not permitted".
+refused='not permitted|do not match any of the allowed destinations'
 repo="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.repoURL}')"
 rev="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.targetRevision}')"
-escape() {  # escape <name> <destination namespace> <namespace in the manifests>: what Argo CD said
+escape() {  # escape <name> <path> <destination namespace> <namespace in the manifests>: what Argo CD said
   kubectl apply -f - >/dev/null <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -285,12 +294,12 @@ spec:
   source:
     repoURL: $repo
     targetRevision: $rev
-    path: apps/team-b/overlays/kind
+    path: $2
     kustomize:
-      namespace: $3
+      namespace: $4
   destination:
     name: in-cluster
-    namespace: $2
+    namespace: $3
   syncPolicy:
     automated: {}
 EOF
@@ -304,23 +313,29 @@ op=s.get("operationState") or {}
 out.append(op.get("message",""))
 out+=[r.get("message","") for r in (op.get("syncResult") or {}).get("resources",[])]
 print(" | ".join(m for m in out if m))' 2>/dev/null)"
-    grep -qi "not permitted" <<<"$msg" && break
+    grep -qiE "$refused" <<<"$msg" && break
     sleep 5
   done
   kubectl -n argocd delete application "$1" --ignore-not-found --wait=false >/dev/null
   echo "$msg"
 }
-msg="$(escape e2e-tenant-escape kube-system kube-system)"
-if grep -qi "not permitted" <<<"$msg" && [ -z "$(kubectl -n kube-system get deployment app -o name 2>/dev/null)" ]; then
+msg="$(escape e2e-tenant-escape apps/team-b/overlays/kind kube-system kube-system)"
+if grep -qiE "$refused" <<<"$msg" && [ -z "$(kubectl -n kube-system get deployment app -o name 2>/dev/null)" ]; then
   pass "an Application of team-b's aimed at kube-system is refused by its project"
 else
   fail "an Application of team-b's aimed at kube-system was not refused: '${msg:-no message}'"
 fi
-msg="$(escape e2e-tenant-crossing team-b demo)"
-if grep -qi "not permitted" <<<"$msg" && [ -z "$(kubectl -n demo get deployment app -o name 2>/dev/null)" ]; then
+msg="$(escape e2e-tenant-crossing apps/team-b/overlays/kind team-b demo)"
+if grep -qiE "$refused" <<<"$msg" && [ -z "$(kubectl -n demo get deployment app -o name 2>/dev/null)" ]; then
   pass "team-b's manifests pointed at the demo namespace are refused by its project"
 else
   fail "team-b's manifests pointed at the demo namespace were not refused: '${msg:-no message}'"
+fi
+msg="$(escape e2e-tenant-escalate tests/e2e/tenant-escape team-b team-b)"
+if grep -qiE "$refused" <<<"$msg" && ! kubectl -n team-b get rolebinding e2e-escalate >/dev/null 2>&1; then
+  pass "a RoleBinding that would make team-b admin of its namespace is refused by its project"
+else
+  fail "team-b's RoleBinding to admin was not refused: '${msg:-no message}'"
 fi
 quota="$(kubectl -n team-b get resourcequota tenant -o jsonpath='{.spec.hard.services\.loadbalancers}' 2>/dev/null)"
 owner="$(kubectl get namespace team-b -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)"
