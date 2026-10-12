@@ -86,9 +86,12 @@ kubectl patch validatingpolicy require-probes --type json -p '[{"op":"replace","
 until_true 120 bash -c "kubectl get validatingadmissionpolicy vpol-require-probes -o jsonpath='{.spec.validations[0].expression}' | grep -q startupProbe" \
   || fail "the stricter policy never reached the API server"
 # The API server picks up a changed ValidatingAdmissionPolicy on its own
-# schedule, seconds after the object changes; the guide says to wait. A
-# server-side dry run shows when it has, without restarting anything.
-until_true 60 bash -c '! kubectl -n demo rollout restart deployment/frontend --dry-run=server >/dev/null 2>&1' \
+# schedule, a second or two after the object changes; the guide says to wait.
+# A server-side dry-run patch shows when it has, without restarting anything.
+# The refusal has to name the policy: `rollout restart` has no --dry-run flag,
+# and the first version of this wait passed on that error alone.
+until_true 60 bash -c 'kubectl -n demo patch deployment frontend --dry-run=server --type merge \
+    -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"hands-on/probe\":\"$RANDOM\"}}}}}" 2>&1 | grep -q vpol-require-probes' \
   && pass "within a minute the API server enforces the changed policy" || fail "the changed policy was never enforced"
 out="$(kubectl -n demo rollout restart deployment/frontend 2>&1)"
 grep -q "vpol-require-probes" <<<"$out" && pass "a restart of the demo is refused, naming vpol-require-probes" \

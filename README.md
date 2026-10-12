@@ -27,6 +27,7 @@ Every line below is a check that fails the build when the claim stops being true
 | The EKS Terraform keeps its security posture | `terraform test` on a mocked plan; 24 planted violations, each must fail it | every change |
 | Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 11 planted violations | every change |
 | No pin silently falls behind | every chart, image, tool and provider compared with upstream | weekly |
+| The hands-on guide works as written | its three break-and-fix exercises run with every symptom, diagnosis and fix checked | weekly, and on any change to the guide |
 
 The e2e suite is [`tests/e2e/run.sh`](tests/e2e/run.sh); the static checks are [`scripts/validate.sh`](scripts/validate.sh).
 
