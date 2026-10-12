@@ -183,7 +183,7 @@ kubectl -n demo rollout status statefulset/backend
 curl -s --cacert platform-ca.crt --resolve demo.platform.test:8443:127.0.0.1 https://demo.platform.test:8443/store/$HASH
 ```
 
-The restore is `Completed`, the pods are running, and the data is gone.
+The restore is `Completed`, the pods are running, and the data is gone: the backend answers `{"code": 500, "message": "reading file failed"}`. podinfo puts the error in the body and sends HTTP 200 with it, so a script that checks only the status code would read this as success; a file it can read comes back with HTTP 202.
 
 **Find it.** Ask what each backup actually copied:
 

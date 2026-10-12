@@ -187,16 +187,19 @@ autosync tenant-demo off
 autosync demo off
 pv="$(kubectl -n demo get pvc data-backend-0 -o jsonpath='{.spec.volumeName}')"
 kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
-# The guide waits for the volume itself to go, as it would in a real loss;
-# a restore that started earlier could find the old disk still there.
+# The guide waits for the volume itself to go, as in a real loss: whatever
+# the restore brings back can then only have come from the backup.
 kubectl wait --for=delete "pv/$pv" --timeout=180s >/dev/null 2>&1 && pass "the volume $pv is gone with the namespace" \
   || fail "the volume $pv outlived its namespace"
 [ "$(restore "from-bad-$RUN" "$bad")" = Completed ] && pass "the restore from the bad backup says Completed" || fail "the bad restore did not complete"
 marker >/dev/null; got="$(cat "$WORK/body")"
-# "Gone" has to be the backend saying so (podinfo answers 500, reading file
-# failed), not a request that never arrived.
-[ "$MARKER_CODE" = 500 ] && [ "$got" != "written before the incident" ] && pass "and the data is gone: the backend answers $MARKER_CODE" \
-  || fail "the data-is-gone check got HTTP ${MARKER_CODE:-none}, not the backend's 500"
+# "Gone" has to be the backend saying so, not a request that never arrived.
+# podinfo reports an error with HTTP 200 and the real code in the body:
+# {"code": 500, "message": "reading file failed"}. A file it can read comes
+# back with 202.
+gone="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("code"), d.get("message"))' <"$WORK/body" 2>/dev/null)"
+[ "$MARKER_CODE" = 200 ] && [ "$gone" = "500 reading file failed" ] && pass "and the data is gone: the backend says $gone" \
+  || fail "the data-is-gone check got HTTP ${MARKER_CODE:-none} '${got:0:200}', not the backend's reading file failed"
 kubectl delete namespace demo --wait=true --timeout=300s >/dev/null
 [ "$(restore "from-good-$RUN" "$good")" = Completed ] && pass "the restore from the good backup Completed" || fail "the good restore did not complete"
 marker >/dev/null; got="$(cat "$WORK/body")"

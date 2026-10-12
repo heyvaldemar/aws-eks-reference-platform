@@ -468,8 +468,8 @@ EOF
   volumes="$(kubectl -n velero get podvolumebackups -l velero.io/backup-name="$name" -o name | wc -l | tr -d ' ')"
   if [ "$phase" = Completed ] && [ "$volumes" -gt 0 ]; then
     pass "backup $name Completed with $volumes pod volume(s)"
-    # The volume has to be gone too, or a restore could read the old disk
-    # back and pass without Velero copying anything.
+    # The volume has to be gone too: then the marker that comes back can
+    # only have come from the backup, whatever the reclaim policy.
     pv="$(kubectl -n demo get pvc data-backend-0 -o jsonpath='{.spec.volumeName}')"
     kubectl delete namespace demo --wait=true --timeout=5m >/dev/null
     kubectl wait --for=delete "pv/$pv" --timeout=180s >/dev/null 2>&1
