@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.0.0] - 2026-10-12
+
 ### Added
 
 - The platform as Argo CD ApplicationSets keyed on the cluster Secret: Envoy Gateway, cert-manager, External Secrets, Kyverno, kube-prometheus-stack, the OpenTelemetry Collector and Velero on every cluster; Karpenter, the AWS Load Balancer Controller and ExternalDNS on EKS.
@@ -15,3 +19,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - Static checks on the rendered manifests and the Terraform, each shown its planted violation.
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
+
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/releases/tag/v1.0.0
