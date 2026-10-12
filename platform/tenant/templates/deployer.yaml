@@ -1,0 +1,38 @@
+# The account a tenant's syncs run as (Argo CD sync impersonation, enforced
+# in platform/values/argo-cd/common.yaml). It lives in the argocd namespace,
+# so no pod of the tenant's can mount it, and it may touch only the kinds on
+# the allow-list, only in the tenant's namespace. Whatever the project lets
+# through, the API server still refuses a RoleBinding, a Secret or a write to
+# another namespace from this account.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-{{ include "tenant.name" . }}-deployer
+  namespace: argocd
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-deployer
+  namespace: {{ include "tenant.name" . }}
+rules:
+  {{- range .Values.allowedKinds }}
+  - apiGroups: [{{ .group | quote }}]
+    resources: [{{ .resource }}]
+    verbs: [get, list, watch, create, update, patch, delete]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-deployer
+  namespace: {{ include "tenant.name" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tenant-deployer
+subjects:
+  - kind: ServiceAccount
+    name: tenant-{{ include "tenant.name" . }}-deployer
+    namespace: argocd

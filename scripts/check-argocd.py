@@ -64,6 +64,24 @@ def load(path):
         return [d for d in yaml.load_all(f, Loader=Loader) if d]
 
 
+DEPLOYER_VERBS = {"get", "list", "watch", "create", "update", "patch", "delete"}
+
+
+def check_impersonation(appsets):
+    """Every sync runs as the account its project names, and must."""
+    bad = []
+    with open(os.path.join(ROOT, "platform", "values", "argo-cd", "common.yaml"), encoding="utf-8") as f:
+        cm = (yaml.safe_load(f).get("configs") or {}).get("cm") or {}
+    if str(cm.get("application.sync.impersonation.enabled")).lower() != "true":
+        bad.append("argo-cd: application.sync.impersonation.enabled is not \"true\"; every sync runs as the controller")
+    if str(cm.get("application.sync.impersonation.enforced", "true")).lower() != "true":
+        bad.append("argo-cd: application.sync.impersonation.enforced is off; a project without an account syncs as the controller")
+    for p in load(os.path.join(appsets, "project.yaml")):
+        if not p["spec"].get("destinationServiceAccounts"):
+            bad.append("project %s names no destinationServiceAccounts; with impersonation enforced it cannot sync" % p["metadata"]["name"])
+    return bad
+
+
 def check_tenants(dirs, appsets):
     bad = []
     tenants = load(os.path.join(appsets, "tenants.yaml"))[0]
@@ -138,6 +156,25 @@ def check_tenants(dirs, appsets):
                     elif (group, kind) in TENANT_FORBIDDEN:
                         bad.append("project tenant-%s lets the tenant create %s/%s" % (tenant, group, kind))
                 allowed_kinds[tenant] = white
+                account = "argocd:tenant-%s-deployer" % tenant
+                dsa = [(d.get("namespace"), d.get("defaultServiceAccount")) for d in spec.get("destinationServiceAccounts") or []]
+                if dsa != [(tenant, account)]:
+                    bad.append("project tenant-%s syncs as %s; it must sync as %s in %s only" % (tenant, dsa, account, tenant))
+                roles = [x for x in docs if x.get("kind") == "Role" and x["metadata"].get("namespace") == tenant]
+                granted = set()
+                for role_doc in roles:
+                    for rule in role_doc.get("rules", []):
+                        for g in rule.get("apiGroups", []):
+                            for r in rule.get("resources", []):
+                                granted.add((g, r))
+                        if set(rule.get("verbs", [])) - DEPLOYER_VERBS:
+                            bad.append("tenant-%s's deployer Role grants %s" % (tenant, sorted(set(rule.get("verbs", [])) - DEPLOYER_VERBS)))
+                with open(os.path.join(ROOT, "platform", "tenant", "values.yaml"), encoding="utf-8") as f:
+                    listed = {(k["group"], k["resource"]) for k in yaml.safe_load(f)["allowedKinds"]}
+                for g, r in sorted(granted - listed):
+                    bad.append("tenant-%s's deployer Role grants %s/%s, which is not on the allow-list" % (tenant, g or "core", r))
+                if not granted:
+                    bad.append("tenant-%s renders no deployer Role; its syncs could not apply anything" % tenant)
                 labels = spaces[0].get("metadata", {}).get("labels", {}) if spaces else {}
                 if labels.get("platform.heyvaldemar.com/tenant") != "true" or labels.get("pod-security.kubernetes.io/enforce") != "restricted":
                     bad.append("%s/%s: namespace %s is not labelled as a restricted tenant: %s" % (env, name, tenant, labels))
@@ -190,6 +227,7 @@ def main(dirs):
                     if not src.get("chart") and src.get("targetRevision") != "{{ .metadata.annotations.platform_revision }}":
                         bad.append("%s: a Git source with targetRevision '%s'; it must be {{ .metadata.annotations.platform_revision }}"
                                    % (fname, src.get("targetRevision")))
+    bad += check_impersonation(appsets)
     bad += check_tenants(dirs, appsets)
     for line in bad:
         print("FAIL  " + line)

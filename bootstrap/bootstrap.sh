@@ -152,6 +152,10 @@ echo "labels:      ${labels[*]}"
 echo "revision:    $PLATFORM_REVISION"
 
 # --- 4. the root Application ---------------------------------------------------
+# Syncs run as the service account their project names, and a project that
+# names none cannot sync. The projects go in first, so the root Application's
+# first sync has its account; the root Application keeps them in Git's state.
+kubectl apply -f "$ROOT/platform/appsets/project.yaml" >/dev/null
 say "root Application: $PLATFORM_REPO_URL platform/appsets @ $PLATFORM_REVISION"
 kubectl apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1

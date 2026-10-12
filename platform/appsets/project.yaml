@@ -30,8 +30,43 @@ spec:
   destinations:
     - name: in-cluster
       namespace: "*"
+  # Platform syncs run as the controller's own service account, named here
+  # rather than assumed: with impersonation enforced, a project that names
+  # no account cannot sync.
+  destinationServiceAccounts:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+      defaultServiceAccount: argocd:argocd-application-controller
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"
   orphanedResources:
     warn: true
+---
+# The project of the root Application (bootstrap/bootstrap.sh), which applies
+# platform/appsets: ApplicationSets, AppProjects and repository Secrets, all
+# in the argocd namespace. Argo CD creates a `default` project that allows
+# every source, every destination and every kind; this one allows this
+# repository, the argocd namespace and no cluster-scoped kind. The bootstrap
+# applies this file before the root Application exists, so its first sync
+# already has an account to run as.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  description: The root Application only.
+  sourceRepos:
+    - https://github.com/*/aws-eks-reference-platform
+    - https://github.com/*/aws-eks-reference-platform.git
+    - git@github.com:*/aws-eks-reference-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+  destinationServiceAccounts:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+      defaultServiceAccount: argocd:argocd-application-controller
+  orphanedResources:
+    warn: false

@@ -16,6 +16,11 @@ spec:
   destinations:
     - name: {{ required "cluster: the cluster Secret's name" .Values.cluster | quote }}
       namespace: {{ include "tenant.name" . }}
+  # Syncs run as this account (deployer.yaml), not as the controller.
+  destinationServiceAccounts:
+    - server: https://kubernetes.default.svc
+      namespace: {{ include "tenant.name" . }}
+      defaultServiceAccount: argocd:tenant-{{ include "tenant.name" . }}-deployer
   namespaceResourceWhitelist:
     {{- range .Values.allowedKinds }}
     - group: {{ .group | quote }}

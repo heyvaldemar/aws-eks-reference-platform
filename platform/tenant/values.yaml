@@ -36,7 +36,9 @@ reserved:
   - policies
   - velero
 
-# The kinds a tenant's directory may hold, and nothing else. An allow-list,
+# The kinds a tenant's directory may hold, and nothing else. Each is allowed
+# twice: by the tenant's Argo CD project (kind), and by the Role its syncs run
+# as (resource), so the API server refuses what Argo CD would. An allow-list,
 # not a deny-list: a kind nobody thought of is refused until someone adds it
 # here in a platform change. Left out on purpose: Role and RoleBinding (a
 # team that could bind itself admin in its namespace could edit the quota
@@ -44,22 +46,22 @@ reserved:
 # ResourceQuota and LimitRange, Kyverno policies and exceptions, and Gateway
 # (a Gateway of its own gets its own load balancer).
 allowedKinds:
-  - {group: "", kind: ConfigMap}
-  - {group: "", kind: PersistentVolumeClaim}
-  - {group: "", kind: Service}
-  - {group: "", kind: ServiceAccount}
-  - {group: apps, kind: Deployment}
-  - {group: apps, kind: StatefulSet}
-  - {group: autoscaling, kind: HorizontalPodAutoscaler}
-  - {group: batch, kind: CronJob}
-  - {group: batch, kind: Job}
-  - {group: external-secrets.io, kind: ExternalSecret}
-  - {group: gateway.networking.k8s.io, kind: HTTPRoute}
-  - {group: monitoring.coreos.com, kind: PodMonitor}
-  - {group: monitoring.coreos.com, kind: PrometheusRule}
-  - {group: monitoring.coreos.com, kind: ServiceMonitor}
-  - {group: networking.k8s.io, kind: NetworkPolicy}
-  - {group: policy, kind: PodDisruptionBudget}
+  - {group: "", kind: ConfigMap, resource: configmaps}
+  - {group: "", kind: PersistentVolumeClaim, resource: persistentvolumeclaims}
+  - {group: "", kind: Service, resource: services}
+  - {group: "", kind: ServiceAccount, resource: serviceaccounts}
+  - {group: apps, kind: Deployment, resource: deployments}
+  - {group: apps, kind: StatefulSet, resource: statefulsets}
+  - {group: autoscaling, kind: HorizontalPodAutoscaler, resource: horizontalpodautoscalers}
+  - {group: batch, kind: CronJob, resource: cronjobs}
+  - {group: batch, kind: Job, resource: jobs}
+  - {group: external-secrets.io, kind: ExternalSecret, resource: externalsecrets}
+  - {group: gateway.networking.k8s.io, kind: HTTPRoute, resource: httproutes}
+  - {group: monitoring.coreos.com, kind: PodMonitor, resource: podmonitors}
+  - {group: monitoring.coreos.com, kind: PrometheusRule, resource: prometheusrules}
+  - {group: monitoring.coreos.com, kind: ServiceMonitor, resource: servicemonitors}
+  - {group: networking.k8s.io, kind: NetworkPolicy, resource: networkpolicies}
+  - {group: policy, kind: PodDisruptionBudget, resource: poddisruptionbudgets}
 
 # What one tenant may request in total. Every container already has to
 # declare CPU and memory requests and a memory limit (policies/), so the

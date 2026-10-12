@@ -2,6 +2,14 @@
 # has no SSO or chat to wire them to), ApplicationSets on, every component
 # with requests and a memory limit.
 configs:
+  cm:
+    # Every sync runs as the service account its project names
+    # (destinationServiceAccounts), not as the controller. A tenant's sync
+    # runs as tenant-<team>-deployer, which may touch only the kinds on its
+    # allow-list in its own namespace, so the API server's RBAC backs the
+    # project. Enforced: a project that names no account cannot sync at all.
+    application.sync.impersonation.enabled: "true"
+    application.sync.impersonation.enforced: "true"
   params:
     # Diff against a server-side dry run of the apply, not against the bare
     # manifest: fields the API server defaults (Gateway API, CRD conversion

@@ -20,8 +20,9 @@
 #      its own hostname, gets its own default-deny, and cannot read secrets
 #      through the store the platform reserves for another tenant; its Argo
 #      CD project refuses an Application aimed at kube-system, manifests
-#      aimed at the demo namespace and a RoleBinding to admin, and its
-#      namespace belongs to the platform
+#      aimed at the demo namespace and a RoleBinding to admin; its syncs run
+#      as an account the API server limits to the same kinds in team-b; and
+#      its namespace belongs to the platform
 #   6. metrics are scraped and traces arrive as span metrics; the demo's SLO
 #      rules are loaded, its dashboard is in Grafana, and when the frontend
 #      fails the fast-burn alert really fires
@@ -336,6 +337,19 @@ if grep -qiE "$refused" <<<"$msg" && ! kubectl -n team-b get rolebinding e2e-esc
   pass "a RoleBinding that would make team-b admin of its namespace is refused by its project"
 else
   fail "team-b's RoleBinding to admin was not refused: '${msg:-no message}'"
+fi
+# The project is one wall; the API server is the second. team-b's syncs run
+# as argocd:tenant-team-b-deployer (sync impersonation, enforced), and that
+# account may write the allow-listed kinds in team-b and nothing else.
+as_b=system:serviceaccount:argocd:tenant-team-b-deployer
+imp="$(kubectl -n argocd get configmap argocd-cm -o jsonpath='{.data.application\.sync\.impersonation\.enabled}/{.data.application\.sync\.impersonation\.enforced}')"
+can() { kubectl auth can-i "$@" --as="$as_b" 2>/dev/null; }
+if [ "$imp" = true/true ] && [ "$(can patch deployments -n team-b)" = yes ] \
+   && [ "$(can create rolebindings -n team-b)" = no ] && [ "$(can create secrets -n team-b)" = no ] \
+   && [ "$(can patch resourcequotas -n team-b)" = no ] && [ "$(can patch deployments -n demo)" = no ]; then
+  pass "team-b's syncs run as an account the API server limits to its allow-list in team-b"
+else
+  fail "team-b's sync account: impersonation '$imp', deployments in team-b '$(can patch deployments -n team-b)', rolebindings '$(can create rolebindings -n team-b)', secrets '$(can create secrets -n team-b)', quota '$(can patch resourcequotas -n team-b)', deployments in demo '$(can patch deployments -n demo)'"
 fi
 quota="$(kubectl -n team-b get resourcequota tenant -o jsonpath='{.spec.hard.services\.loadbalancers}' 2>/dev/null)"
 owner="$(kubectl get namespace team-b -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)"

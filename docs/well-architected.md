@@ -23,11 +23,11 @@ The full picture, threat by threat, is in the [threat model](threat-model.md). I
 |---|---|
 | Admission enforced by the API server itself, not only by a webhook | e2e 4b: Kyverno scaled to zero, every planted manifest still refused |
 | Images by digest; Pod Security `restricted` for tenants | e2e steps 1, 2 and 4; static checks with planted violations |
-| Tenants confined to one namespace, with an allow-list of kinds and no RBAC | e2e 5b: three escape attempts refused by Argo CD; `check-argocd.py` |
+| Tenants confined to one namespace, with an allow-list of kinds and no RBAC, and syncs that run with tenant rights only | e2e 5b: three escape attempts refused by Argo CD, and the API server's answers for team-b's sync account; `check-argocd.py` |
 | Default-deny networking per tenant | e2e step 5 |
 | Access entries only, KMS for Secrets, IMDSv2 with hop limit 1, Pod Identity per controller | `terraform test`, 24 planted violations (mocked plan) |
 
-**Not yet:** signature and SBOM verification at admission, runtime detection, encryption between pods, and sync impersonation so Argo CD applies tenant manifests with tenant rights.
+**Not yet:** signature and SBOM verification at admission, runtime detection, and encryption between pods.
 
 ## Reliability
 
