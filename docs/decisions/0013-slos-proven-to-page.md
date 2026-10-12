@@ -19,6 +19,7 @@ Dashboards and alerts are easy to add and hard to trust. An alert rule with a wr
 - An alert in this repository has been seen to fire, in a test and in a cluster, before anyone relies on it.
 - kind keeps a day of metrics, so the 30-day objective is evaluated over the windows that exist; on EKS Prometheus keeps fifteen days, and a month needs long-term storage (Thanos, Mimir or a managed service), which is not part of this platform yet.
 - Alertmanager runs on EKS only and routes nowhere until a team connects it to its pager.
+- The objective counts what the service says with its status code. podinfo, the demo's stand-in, reports handler errors with HTTP 200 and the real code in the body (`{"code": 500, "message": "reading file failed"}`), so those errors count as good requests. The SLO step passes because it fails requests through `/status/500`, which returns a real 500. A service measured this way has to return the status it means.
 
 ## Alternatives
 
