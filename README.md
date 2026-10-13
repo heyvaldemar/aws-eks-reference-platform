@@ -3,6 +3,7 @@
 [![kind e2e](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/kind-e2e.yml/badge.svg)](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/kind-e2e.yml)
 [![Verification](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/verification.yml/badge.svg)](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/verification.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/heyvaldemar/aws-eks-reference-platform/badge)](https://scorecard.dev/viewer/?uri=github.com/heyvaldemar/aws-eks-reference-platform)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15462/badge)](https://www.bestpractices.dev/projects/15462)
 
 A reference Kubernetes platform for Amazon EKS: Terraform for the cluster, Argo CD for everything on it, and a test suite that proves what the platform does instead of describing it. It is a reference architecture, not a product, and it does not run in production anywhere.
 
