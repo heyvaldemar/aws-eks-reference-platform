@@ -20,7 +20,15 @@ What it does not get by default: the platform's secret store. `ClusterSecretStor
 
 ## The steps
 
-1. Copy the template, named after the team. The name is a DNS label: lowercase letters, digits and hyphens, not starting with `kube-` or `tenant-`, and not one of the platform's own names (`reserved` in `platform/tenant/values.yaml`).
+1. Make the tenant from the template, named after the team. The name is a DNS label: lowercase letters, digits and hyphens, not starting with `kube-` or `tenant-`, and not one of the platform's own names (`reserved` in `platform/tenant/values.yaml`). `kubectl tenant`, in [`tools/kubectl-tenant`](../tools/kubectl-tenant/), refuses a name the chart would refuse before it writes anything; it needs Go to build:
+
+   ```bash
+   (cd tools/kubectl-tenant && go build -o ../../.cache/bin/kubectl-tenant .)
+   export PATH="$PWD/.cache/bin:$PATH"
+   kubectl tenant new payments
+   ```
+
+   Without Go, the same by hand:
 
    ```bash
    cp -R apps/_template apps/payments
@@ -39,6 +47,8 @@ What it does not get by default: the platform's secret store. `ClusterSecretStor
    ```
 
    The render includes the new tenant; kubeconform, kube-linter and the policy tests run against it, and the Argo CD check confirms that everything it renders stays in its own namespace. A missing digest or probe fails here, not at admission.
+
+   Without the cluster's toolchain, `kubectl tenant check payments` reports from the files alone what admission would refuse: an image without a digest, missing requests or memory limit, missing probes, a privileged container.
 
 5. Open the pull request. CI runs the same checks and the kind e2e suite. After it merges and a cluster moves to the new revision, Argo CD creates `tenant-payments` (the namespace, its quota and its project) and then the team's `payments` Application, and `https://payments.<domain>` answers. The team's Application waits for its project: the ApplicationSet retries it every few minutes until the project exists.
 

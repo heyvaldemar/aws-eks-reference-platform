@@ -47,6 +47,29 @@ jobs:
           docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" -x \
             bootstrap/bootstrap.sh scripts/*.sh tests/e2e/*.sh
 
+  kubectl-tenant:
+    name: kubectl-tenant, and that it makes the tenant made by hand
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the pinned CI images
+        run: grep -E '^[A-Z_]+=' ci-images.pins >> "$GITHUB_ENV"
+
+      # The tests rebuild apps/team-b from apps/_template and require the
+      # result to match the tenant made by hand, read the reserved names from
+      # platform/tenant/values.yaml, and plant each violation the check exists
+      # for. -mod=readonly: go.sum is the record of what was reviewed.
+      - name: gofmt, vet and the tests
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src/tools/kubectl-tenant \
+            -e GOTOOLCHAIN=local -e GOFLAGS=-mod=readonly "$GO_IMAGE" sh -c \
+            'out="$(gofmt -l .)"; [ -z "$out" ] || { echo "not gofmt-clean: $out"; exit 1; }; go vet ./... && go test -race -count=1 ./...'
+
   terraform:
     name: Terraform, and that its test can fail
     runs-on: ubuntu-latest

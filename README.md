@@ -163,10 +163,11 @@ policies/             Kyverno policies, each with a test that shows it a violati
 apps/                 tenants, one directory each: demo (every e2e check), team-b, _template
 bootstrap/            installs Argo CD once and hands the cluster to it
 terraform/            the EKS cluster and what it needs in AWS
+tools/kubectl-tenant/ a kubectl plugin in Go: make a tenant from the template, check it before review
 tests/e2e/            the checks against a running cluster
 tests/static/         the planted violations for the static checks
 scripts/              render, validate, freshness, diagnostics
-docs/                 decisions, runbooks, the hands-on guide
+docs/                 decisions, runbooks, the hands-on guide, the engagement pack
 ```
 
 ## Decisions and runbooks

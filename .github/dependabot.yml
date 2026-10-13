@@ -34,3 +34,12 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+  - package-ecosystem: gomod
+    directory: /tools/kubectl-tenant
+    schedule:
+      interval: weekly
+    groups:
+      gomod:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps
