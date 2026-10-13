@@ -178,6 +178,10 @@ cosign verify-blob aws-eks-reference-platform-<tag>.tar.gz \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+## Next to it
+
+[kubernetes-ai-agent-sandbox](https://github.com/heyvaldemar/kubernetes-ai-agent-sandbox) narrows the same ideas to one question: what an AI agent that has been talked into something can reach. Agent pods run on gVisor, can call one tool and nothing else, and the API server refuses an agent workload that is not set up that way; a demo agent fooled on purpose proves it on every change.
+
 ## How this is built
 
 One maintainer and an AI agent. The agent writes most of the code; the decisions are mine, and so is the verification. Nothing merges on the agent's report that it works: it merges on the checks above, and each of those has been shown the failure it exists to catch. Two of the platform's design choices came from checks failing during the build: a Velero restore that reported Completed with an empty volume, and Kyverno policies that let everything through while Kyverno was down.
