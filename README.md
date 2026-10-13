@@ -141,6 +141,16 @@ An estimate from AWS list prices for us-east-1, not a measured bill. Check the [
 
 Not in the table: Karpenter's nodes for workloads (Spot first), NAT and load balancer data processing, and CloudWatch Logs ingestion, where the control plane's audit log is usually the largest line. The cluster is pinned to standard support: when 1.37 leaves it, EKS will not move the cluster to extended support at six times the control plane price; it has to be upgraded.
 
+## Known limitations
+
+- **Proven on kind, not on AWS.** Every check above runs on a one-node kind cluster. The EKS Terraform is validated and tested against a mocked provider and has not been applied to an account, so nothing here is measured at production scale, across zones, or with real IAM, KMS and load balancers.
+- **One cluster, one region.** No multi-cluster fleet, no failover between regions; Argo CD and the platform add-ons run in the cluster they manage.
+- **No runtime detection and no encryption between pods.** Admission and network policy decide what starts and what talks; nothing watches what a running container does, and traffic inside the cluster is plain.
+- **No SSO.** Argo CD and Grafana are reached by port-forward with an admin password from the cluster.
+- **Images are pinned, not verified.** Digests pin bytes; signatures, provenance and scans are checked by [kubernetes-supply-chain-admission](https://github.com/heyvaldemar/kubernetes-supply-chain-admission), not here.
+
+The [threat model](docs/threat-model.md) lists each of these with what would close it.
+
 ## Repository
 
 ```text
@@ -164,6 +174,8 @@ docs/                 decisions, runbooks, the hands-on guide
 [`docs/decisions/`](docs/decisions/) records why each choice was made and what was given up for it, from Karpenter over EKS Auto Mode to policies the API server enforces natively. Each ends with how the choice would be explained to a customer.
 
 Runbooks: [upgrade](docs/runbooks/upgrade.md), [rollback](docs/runbooks/rollback.md), [restore](docs/runbooks/restore.md), [incident](docs/runbooks/incident.md).
+
+The [engagement pack](docs/engagement/) is what a customer adopting the platform would be handed, written for one fictional customer: an executive summary, discovery questions, a success plan whose every acceptance criterion is a check in this repository, an adoption plan from Docker Compose to tenants, sizing with the arithmetic shown, and the handover.
 
 The [threat model](docs/threat-model.md) lists every threat the platform defends against with the check that proves the control, and the residual risks it does not cover. The [Well-Architected review](docs/well-architected.md) reads the platform against the six AWS pillars, with the evidence and the gaps for each.
 
