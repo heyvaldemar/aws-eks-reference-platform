@@ -85,7 +85,7 @@ The actors the controls are designed against: a tenant team that makes a mistake
 What the platform does not cover today, said plainly so nobody assumes it does.
 
 - **Platform syncs run with cluster-wide rights.** Tenant syncs run as their own deployer accounts, but the platform's Applications sync as the controller's service account, because the platform installs cluster-scoped add-ons. Whoever can push to this repository controls the platform; who has write access to it is the control there, not Argo CD.
-- **Image digests pin bytes, not provenance.** Nothing verifies a signature or an SBOM at admission. That is the subject of a separate repository, not this one.
+- **Image digests pin bytes, not provenance.** Nothing on this platform verifies a signature or an SBOM at admission. [kubernetes-supply-chain-admission](https://github.com/heyvaldemar/kubernetes-supply-chain-admission) does, with the same Kyverno: one signer, provenance, an SBOM and a recent scan, and a native registry allowlist under it for when Kyverno is down.
 - **No runtime detection.** Nothing watches system calls or process trees inside a running container (Falco, Tetragon). A compromised workload that stays inside its namespace and its network policy is not detected.
 - **No encryption between pods.** Traffic inside the cluster is plain; TLS ends at the Gateway. A service mesh or the VPC CNI's encryption would change that.
 - **kind has no audit log and no KMS.** The daily proof runs on kind; the controls that only exist in AWS are proven against a mocked plan, not a live account.
