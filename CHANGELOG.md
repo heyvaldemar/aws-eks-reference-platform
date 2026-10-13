@@ -4,7 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Fixed
+
+- `bootstrap.sh` stores `PLATFORM_REPO_TOKEN` without a trailing newline. It was fed through a here-string, which appends one, and Argo CD sent the token as stored when it listed the remote's refs, so an Application pinned to a tag or a branch of a private repository failed with "Invalid username or token". A commit SHA needs no listing, which is why the e2e run, pinned to a commit, never saw it; the upgrade job, the first to read a tag, did.
+
+### Added
+
+- e2e step 8: Argo CD resolves the latest release tag with the credential the cluster holds.
 
 ## [1.0.0] - 2026-10-12
 

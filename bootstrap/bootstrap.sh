@@ -117,9 +117,15 @@ if [ -n "${PLATFORM_REPO_SSH_KEY_FILE:-}" ]; then
     kubectl apply -f - >/dev/null
 elif [ -n "${PLATFORM_REPO_TOKEN:-}" ]; then
   say "read access to $PLATFORM_REPO_URL"
-  kubectl -n argocd create secret generic platform-repo \
+  # printf, not a here-string: <<< appends a newline, the newline became part
+  # of the stored password, and Argo CD sent it as-is when it listed the
+  # remote's refs. A commit SHA needs no listing, so only a tag or a branch
+  # failed, with "Invalid username or token" (v1.0.0; found by the upgrade
+  # job, the first one to read a tag). printf is a builtin: still never argv.
+  printf '%s' "$PLATFORM_REPO_TOKEN" |
+    kubectl -n argocd create secret generic platform-repo \
     --from-literal=type=git --from-literal=url="$PLATFORM_REPO_URL" --from-literal=username=x-access-token \
-    --from-file=password=/dev/stdin --dry-run=client -o yaml <<<"$PLATFORM_REPO_TOKEN" |
+    --from-file=password=/dev/stdin --dry-run=client -o yaml |
     kubectl label --local -f - argocd.argoproj.io/secret-type=repository -o yaml |
     kubectl apply -f - >/dev/null
 fi

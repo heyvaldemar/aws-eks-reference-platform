@@ -29,6 +29,8 @@
 #   7. Velero backs up the demo tenant, the namespace and its volume are
 #      deleted, and the restore brings back the marker written before the
 #      backup
+#   8. Argo CD resolves a release tag of this repository with the credential
+#      the cluster holds
 #
 # Needs kubectl, curl and python3. Writes a summary to $GITHUB_STEP_SUMMARY
 # when it is set.
@@ -571,6 +573,49 @@ EOF
     pass "Argo CD finds the restored tenant identical to Git"
   else
     fail "after the restore Argo CD does not report tenant-demo and demo Synced and Healthy"
+  fi
+fi
+
+# --- 8 -----------------------------------------------------------------------
+step "8. Argo CD reads this repository at a release tag"
+# The root Application reads a commit. A tag is resolved by listing the
+# remote's refs, and that listing is where v1.0.0's bootstrap failed: it stored
+# the repository token with a trailing newline, and Argo CD sent it as stored.
+# This Application reads the latest release with whatever credential the
+# cluster holds (none for a public repository) and renders nothing: docs/ has
+# no manifests. It is never synced.
+repo="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.repoURL}')"
+tag="$(git ls-remote --tags --refs "$repo" 'v*' 2>/dev/null | awk -F/ '{print $3}' | sort -V | tail -1)"
+if [ -z "$tag" ]; then
+  printf '  skip  %s has no release tag this machine can list\n' "$repo"
+else
+  kubectl apply -f - >/dev/null <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: e2e-tag-read
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: $repo
+    targetRevision: $tag
+    path: docs
+  destination:
+    name: in-cluster
+    namespace: argocd
+EOF
+  got=""
+  for _ in $(seq 1 36); do
+    got="$(kubectl -n argocd get application e2e-tag-read -o jsonpath='{.status.sync.revision}{"|"}{.status.conditions[*].message}' 2>/dev/null)"
+    [[ "${got%%|*}" =~ ^[0-9a-f]{40}$ ]] && break
+    sleep 5
+  done
+  kubectl -n argocd delete application e2e-tag-read --wait=false >/dev/null 2>&1
+  if [[ "${got%%|*}" =~ ^[0-9a-f]{40}$ ]]; then
+    pass "Argo CD resolves $tag to a commit with the credential it holds"
+  else
+    fail "Argo CD could not read $tag: ${got#*|}"
   fi
 fi
 

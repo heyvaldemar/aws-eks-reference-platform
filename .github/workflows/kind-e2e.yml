@@ -98,10 +98,13 @@ jobs:
 
       - name: Install the previous release
         if: steps.previous.outputs.tag != ''
+        # No token: the repository is public, so a user of the previous release
+        # needs none, and v1.0.0's bootstrap stored one with a trailing newline
+        # that Argo CD then sent when it resolved the tag. The step that moves
+        # the cluster to this commit passes it, through this commit's bootstrap.
         env:
           PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
           PLATFORM_REVISION: ${{ steps.previous.outputs.tag }}
-          PLATFORM_REPO_TOKEN: ${{ github.token }}
           SKIP_PUSH_CHECK: "1"
           TAG: ${{ steps.previous.outputs.tag }}
         run: |
