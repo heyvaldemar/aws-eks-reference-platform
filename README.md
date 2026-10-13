@@ -197,6 +197,10 @@ cosign verify-blob aws-eks-reference-platform-<tag>.tar.gz \
 
 [kubernetes-supply-chain-admission](https://github.com/heyvaldemar/kubernetes-supply-chain-admission) closes the largest open risk in this platform's threat model. The cluster runs an image only if this repository's own build signed it and attached provenance, an SBOM and a scan from the last day. A native policy keeps images from anywhere else out while Kyverno is down.
 
+## Questions, bugs and changes
+
+Open an [issue](https://github.com/heyvaldemar/aws-eks-reference-platform/issues) for a bug, a question or an idea. Security reports go privately, as [SECURITY.md](SECURITY.md) describes. Changes are welcome as pull requests: CI runs the same checks on them as on main, and a change ships with the check that proves it.
+
 ## How this is built
 
 One maintainer and an AI agent. The agent writes most of the code; the decisions are mine, and so is the verification. Nothing merges on the agent's report that it works: it merges on the checks above, and each of those has been shown the failure it exists to catch. Two of the platform's design choices came from checks failing during the build: a Velero restore that reported Completed with an empty volume, and Kyverno policies that let everything through while Kyverno was down.
