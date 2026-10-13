@@ -7,7 +7,7 @@
 
 Tenant workloads have to meet a floor. Images are referenced by digest and containers carry requests and a memory limit. Long-running workloads have probes, and tenant namespaces enforce the restricted Pod Security Standard. Kyverno 1.19 has two policy APIs: the older `kyverno.io` ClusterPolicy, which its release notes now mark deprecated, and CEL-based `policies.kyverno.io/v1` policies, which can also be compiled into native Kubernetes ValidatingAdmissionPolicies.
 
-While this repository was being built, a test that scaled Kyverno's admission controller to zero showed that Kyverno removes its own webhooks when it stops. Every webhook-enforced policy then admitted everything: a pod with no digest and no limits was accepted.
+While this repository was being built, a test that scaled Kyverno's admission controller to zero showed that Kyverno removes its own webhooks when it stops. Every webhook-enforced policy then admitted everything: a pod with no digest and no limits was accepted. The behaviour is by design and known since Kyverno 1.9 ([kyverno/kyverno#6554](https://github.com/kyverno/kyverno/issues/6554)): the maintainers treat scaling Kyverno to zero as a privileged act, like deleting it, so the platform cannot rely on the webhook staying.
 
 ## Decision
 
