@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.0.1] - 2026-10-13
+
 ### Fixed
 
 - `bootstrap.sh` stores `PLATFORM_REPO_TOKEN` without a trailing newline. It was fed through a here-string, which appends one, and Argo CD sent the token as stored when it listed the remote's refs, so an Application pinned to a tag or a branch of a private repository failed with "Invalid username or token". A commit SHA needs no listing, which is why the e2e run, pinned to a commit, never saw it; the upgrade job, the first to read a tag, did.
@@ -11,6 +15,10 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - e2e step 8: Argo CD resolves the latest release tag with the credential the cluster holds.
+
+### Changed
+
+- The README and the threat model point at the two repositories next to the platform: the agent sandbox, and supply chain admission, which closes the threat model's open risk on unsigned images. ADR 3 says what the trust policy names rather than what the role is trusted by.
 
 ## [1.0.0] - 2026-10-12
 
@@ -26,5 +34,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/releases/tag/v1.0.0
