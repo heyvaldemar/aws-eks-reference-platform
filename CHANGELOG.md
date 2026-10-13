@@ -10,7 +10,7 @@ _(no unreleased changes yet)_
 
 ### Fixed
 
-- `bootstrap.sh` stores `PLATFORM_REPO_TOKEN` without a trailing newline. It was fed through a here-string, which appends one, and Argo CD sent the token as stored when it listed the remote's refs, so an Application pinned to a tag or a branch of a private repository failed with "Invalid username or token". A commit SHA needs no listing, which is why the e2e run, pinned to a commit, never saw it; the upgrade job, the first to read a tag, did.
+- `bootstrap.sh` stores `PLATFORM_REPO_TOKEN` without a trailing newline. It was fed through a here-string, which appends one, and Argo CD sent the token as stored when it listed the remote's refs, so an Application pinned to a tag or a branch failed with "Invalid username or token" whenever the token was set, on a public repository as on a private one. A commit SHA needs no listing, which is why the e2e run, pinned to a commit, never saw it; the upgrade job, the first to read a tag, did.
 
 ### Added
 
