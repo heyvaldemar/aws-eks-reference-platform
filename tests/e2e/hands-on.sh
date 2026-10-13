@@ -135,8 +135,11 @@ until_true 120 kubectl -n demo get networkpolicy default-deny >/dev/null 2>&1 \
 
 # --- 3 ------------------------------------------------------------------------
 step "3. a restore that said Completed"
-hash="$(curl -s --max-time 30 --cacert "$WORK/platform-ca.crt" --resolve demo.platform.test:8443:127.0.0.1 \
-  -X POST --data "written before the incident" https://demo.platform.test:8443/store | python3 -c 'import json,sys; print(json.load(sys.stdin)["hash"])' 2>/dev/null)"
+# The answer is read into a variable before it is parsed: curl piped straight
+# into an interpreter is what OpenSSF Scorecard reports as download-then-run.
+stored="$(curl -s --max-time 30 --cacert "$WORK/platform-ca.crt" --resolve demo.platform.test:8443:127.0.0.1 \
+  -X POST --data "written before the incident" https://demo.platform.test:8443/store)"
+hash="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["hash"])' <<<"$stored" 2>/dev/null)"
 [ -n "$hash" ] && pass "a marker is written" || fail "could not write the marker"
 backup() {  # backup <name> <true|false>: one at a time, as the guide does
   kubectl apply -f - >/dev/null <<EOF

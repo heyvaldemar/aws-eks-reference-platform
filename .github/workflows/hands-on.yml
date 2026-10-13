@@ -36,7 +36,7 @@ jobs:
 
       - name: Install the pinned tools
         run: |
-          pip install --quiet --user 'PyYAML==6.0.3'
+          pip install --quiet --user --require-hashes -r .github/requirements-ci.txt
           ./scripts/install-tools.sh >> "$GITHUB_PATH"
 
       - name: Create the kind cluster

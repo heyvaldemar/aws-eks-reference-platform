@@ -1,4 +1,5 @@
-# Keeps the pinned GitHub Actions and the Terraform provider current. Charts,
+# Keeps the pinned GitHub Actions, the Terraform provider and CI's one Python
+# package (.github/requirements-ci.txt, hash-pinned) current. Charts,
 # images and CLI tools are not in any ecosystem Dependabot reads here; the
 # Verification workflow's weekly freshness job reports those
 # (scripts/check-freshness.py) and fleet triage moves them.
@@ -24,3 +25,12 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: deps
+  - package-ecosystem: pip
+    directory: /.github
+    schedule:
+      interval: weekly
+    groups:
+      pip:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
