@@ -1,0 +1,74 @@
+name: EKS sweeper
+
+# ADR 10, outside every run. Daily, with the delete-only role: destroy what a
+# validation run left behind for longer than three hours, look for residue,
+# and report yesterday's bill, which is when a run's cost reaches it. The
+# kill-switch at $15 does not stop this role, so cleaning goes on after
+# spending has stopped.
+#
+# Does nothing until the account exists: the repository variable
+# AWS_VALIDATION_ENABLED is set to true after terraform/bootstrap-aws.
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eks-sweeper
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Destroy what runs left, report the bill
+    if: vars.AWS_VALIDATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: aws-sweeper
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # The OIDC token the delete-only role trusts.
+      id-token: write
+    env:
+      TF_IN_AUTOMATION: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+
+      - name: Assume the delete-only role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_SWEEP_ROLE_ARN }}
+          role-session-name: eks-sweeper-${{ github.run_id }}
+          role-duration-seconds: 3600
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Destroy what runs left behind
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: ./scripts/aws-sweep.sh
+
+      - name: Yesterday's bill
+        if: always()
+        run: |
+          start="$(date -u -d yesterday +%F)"; end="$(date -u +%F)"
+          {
+            echo "### The account's bill for $start"
+            echo
+            echo "| Service | Cost |"
+            echo "|---|---|"
+            aws ce get-cost-and-usage --time-period "Start=$start,End=$end" --granularity DAILY \
+              --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE \
+              --query 'ResultsByTime[0].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' --output text |
+              awk -F'\t' '$2 > 0.005 {printf "| %s | $%.2f |\n", $1, $2; t += $2} END {printf "| **Total** | **$%.2f** |\n", t}'
+          } >> "$GITHUB_STEP_SUMMARY"

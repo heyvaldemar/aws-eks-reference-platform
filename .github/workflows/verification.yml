@@ -45,7 +45,7 @@ jobs:
       - name: shellcheck
         run: |
           docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" -x \
-            bootstrap/bootstrap.sh scripts/*.sh tests/e2e/*.sh
+            bootstrap/bootstrap.sh scripts/*.sh tests/e2e/*.sh tests/eks/*.sh
 
   kubectl-tenant:
     name: kubectl-tenant, and that it makes the tenant made by hand

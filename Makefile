@@ -99,10 +99,6 @@ eks-bootstrap: tools
 # not by Terraform; destroying the VPC under them fails, or leaves them
 # billing. They go first, while the controllers that made them still run.
 eks-down: guard-spend
-	-kubectl -n argocd delete application platform --wait=false
-	-kubectl -n argocd patch application envoy-gateway demo --type merge -p '{"metadata":{"finalizers":["resources-finalizer.argocd.argoproj.io"]}}'
-	-kubectl -n argocd delete application demo envoy-gateway --timeout=10m
-	-kubectl delete svc -A -l gateway.envoyproxy.io/owning-gateway-name=platform --timeout=10m
-	-kubectl delete pvc -A --all --timeout=10m
+	./scripts/eks-cleanup.sh
 	$(TF) destroy -input=false -auto-approve -var "domain=$$($(TF) output -raw domain)" \
 	  -var 'cluster_endpoint_public_access_cidrs=["$(shell curl -fsS https://checkip.amazonaws.com | tr -d '\n')/32"]'

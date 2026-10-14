@@ -38,7 +38,17 @@ These are the conditions under which a run would be built and enabled. Each is r
 
 - The worst case is bounded twice: by the 3-hour sweeper for anything a run leaves behind, and by the $15 kill-switch for anything that keeps creating.
 - Every run reports what it cost, so the README's estimate can be replaced by a measured number.
-- Building it needs the account, the two roles, the budgets and the two workflows. None of it exists yet, and none of it will until the maintainer says so.
+- Building it needs the account, the two roles, the budgets and the two workflows.
+
+## Built, 2026-10-14
+
+The maintainer said yes on 2026-10-14. What exists, all of it checkable without an account:
+
+- `terraform/bootstrap-aws/`: the OIDC provider, the two roles each trusted for one GitHub environment, guardrails on both, a permissions boundary every role a run creates must carry (without it, a role with AdministratorAccess escapes any deny by creating another role), the state bucket, a persistent validation zone delegated once, the budgets and the kill-switch. Its `terraform test` and ten planted violations run in Verification.
+- `.github/workflows/eks-validation.yml`: guards 1 to 5, with the run's state and variables in the bucket and `tests/eks/run.sh` as the check. The cleanup of what controllers made runs from the job that created the cluster, whose address the API allows; if that job dies first, the teardown adds its own address and does the same. The environment is limited to `main` rather than to a reviewer, because the teardown runs in it and must not wait for a person.
+- `.github/workflows/eks-sweeper.yml`: guard 6, daily, with yesterday's bill in its summary, which is the day-later reconciliation of guard 5 until the run-id cost allocation tag is active.
+
+Not yet: the account. Until it exists and a run has passed, the README keeps saying that the EKS path has not been applied.
 
 ## How to explain this to a customer
 

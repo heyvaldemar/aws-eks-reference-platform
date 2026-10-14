@@ -23,3 +23,6 @@ terraform.rc
 /platform-ca.crt
 __pycache__/
 *.pyc
+terraform/ci_backend.tf
+run.tfvars.json
+evidence/

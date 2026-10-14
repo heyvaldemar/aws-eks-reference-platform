@@ -115,7 +115,7 @@ Then break it on purpose: [docs/hands-on.md](docs/hands-on.md) has three exercis
 
 The Terraform in [`terraform/`](terraform/) creates a VPC over three zones, EKS 1.37 with access entries only and KMS-encrypted Secrets, a Graviton system node group with IMDSv2 and a metadata hop limit of one, the managed add-ons, Pod Identity roles for six controllers, Karpenter's node role and interruption queue, the Velero bucket and the Route 53 zone. `terraform test` checks those properties against a mocked provider on every change.
 
-**It has not been applied to a real AWS account yet.** When it has, and the same e2e suite has passed against it, this section will say when and on which commit.
+**It has not been applied to a real AWS account yet.** The run that will apply it is built: an account bootstrap with a $15 kill-switch (`terraform/bootstrap-aws/`), a manual workflow that applies, installs, checks (`tests/eks/run.sh`), destroys and reports the cost, and a daily delete-only sweeper ([ADR 10](docs/decisions/0010-aws-validation-runs.md)). When a run has passed, this section will say when and on which commit.
 
 The targets exist and refuse to run without an explicit `CONFIRM_SPEND=yes`:
 
