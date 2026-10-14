@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.1.0] - 2026-10-13
+
 ### Added
 
 - `tools/kubectl-tenant`, onboarding as a command. `kubectl tenant new <team>` writes `apps/<team>` from the template and refuses the names the tenant chart refuses, read from `platform/tenant/values.yaml` so the two lists cannot drift apart. `kubectl tenant check <team>` reports from the files alone what admission would refuse: an image without a digest, missing requests, no memory limit, missing probes, a privileged container, the host network. Its tests rebuild `apps/team-b`, made by hand, and fail if the command's result differs.
@@ -54,6 +58,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/releases/tag/v1.0.0
