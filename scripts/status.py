@@ -16,8 +16,9 @@ when E2E_RESULTS is set). Writes:
     badge-checks.json       shields.io endpoint: the latest run's checks
     badge-<measure>.json    one per measurement the run printed
 
-A day counts as green when its last finished run passed. The streak counts
-green days back from the latest day that had a run. Nothing here is typed
+A day counts as green when its last finished run passed; the run count beside
+it shows the failures that rule hides. The streak counts green days back from
+the latest day that had a run. Nothing here is typed
 by hand: every number is read from GitHub at the time it is written.
 """
 import datetime
@@ -26,6 +27,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -33,12 +35,25 @@ API = "https://api.github.com"
 WINDOW_DAYS = 30
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
 def get(url, raw=False):
     req = urllib.request.Request(url if url.startswith("http") else API + url)
     req.add_header("Authorization", "Bearer " + os.environ["GITHUB_TOKEN"])
     req.add_header("Accept", "application/vnd.github+json")
-    with urllib.request.urlopen(req, timeout=60) as r:
-        body = r.read()
+    try:
+        with urllib.request.build_opener(_NoRedirect).open(req, timeout=60) as r:
+            body = r.read()
+    except urllib.error.HTTPError as e:
+        # An artifact download answers with a redirect to signed storage,
+        # which rejects the API's Authorization header: follow it without.
+        if e.code not in (301, 302, 303, 307, 308) or not e.headers.get("Location"):
+            raise
+        with urllib.request.urlopen(e.headers["Location"], timeout=120) as r:
+            body = r.read()
     return body if raw else json.loads(body)
 
 
@@ -111,6 +126,7 @@ def main(out):
         "green_days": len(green),
         "streak_days": streak,
         "runs": len(finished),
+    "runs_passed": sum(1 for r in finished if r["conclusion"] == "success"),
         "latest": None if not latest else {
             "conclusion": latest["conclusion"],
             "at": latest["created_at"],
@@ -128,7 +144,9 @@ def main(out):
 
     if days:
         color = "brightgreen" if len(green) == len(days) else ("yellow" if len(green) >= 0.9 * len(days) else "red")
-        msg = f"{len(green)} of {len(days)} days green"
+        # Both counts: a day is green by its last run, and the runs show
+        # what that hides, a failure earlier the same day.
+        msg = f"{len(green)} of {len(days)} days green, {status['runs_passed']} of {len(finished)} runs"
     else:
         color, msg = "lightgrey", "no runs yet"
     json.dump(badge(f"e2e, last {WINDOW_DAYS} days", msg, color), open(os.path.join(out, "badge-days.json"), "w"))
