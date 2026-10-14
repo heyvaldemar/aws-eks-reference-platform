@@ -219,3 +219,54 @@ run "refuses_an_api_open_to_the_internet" {
 
   expect_failures = [var.cluster_endpoint_public_access_cidrs]
 }
+
+# A validation run (ADR 10) passes the persistent zone from
+# terraform/bootstrap-aws: nothing is created, the controllers are confined
+# to that zone, and a zone for another domain is refused.
+run "existing_zone" {
+  command = plan
+
+  variables {
+    zone_id = "Z0EXISTING00000000000"
+  }
+
+  override_data {
+    target = data.aws_route53_zone.existing
+    values = {
+      name         = "platform.example.com."
+      arn          = "arn:aws:route53:::hostedzone/Z0EXISTING00000000000"
+      name_servers = ["ns-1.example.net"]
+    }
+  }
+
+  assert {
+    condition     = length(aws_route53_zone.this) == 0
+    error_message = "with zone_id set, no zone is created"
+  }
+  assert {
+    condition     = strcontains(aws_iam_role_policy.controller["external-dns"].policy, "Z0EXISTING00000000000")
+    error_message = "ExternalDNS may write only to the existing zone"
+  }
+  assert {
+    condition     = strcontains(aws_iam_role_policy.controller["cert-manager"].policy, "Z0EXISTING00000000000")
+    error_message = "cert-manager may answer challenges only in the existing zone"
+  }
+}
+
+run "existing_zone_for_another_domain" {
+  command = plan
+
+  variables {
+    zone_id = "Z0OTHER0000000000000"
+  }
+
+  override_data {
+    target = data.aws_route53_zone.existing
+    values = {
+      name = "other.example.org."
+      arn  = "arn:aws:route53:::hostedzone/Z0OTHER0000000000000"
+    }
+  }
+
+  expect_failures = [data.aws_route53_zone.existing]
+}

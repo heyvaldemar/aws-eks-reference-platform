@@ -38,7 +38,7 @@ locals {
           {
             Effect   = "Allow"
             Action   = ["route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets", "route53:ListTagsForResources"]
-            Resource = aws_route53_zone.this.arn
+            Resource = local.zone_arn
           },
           {
             Effect   = "Allow"
@@ -63,7 +63,7 @@ locals {
             # Only the TXT records of an ACME DNS-01 challenge, only in this zone.
             Effect   = "Allow"
             Action   = ["route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets"]
-            Resource = aws_route53_zone.this.arn
+            Resource = local.zone_arn
             Condition = {
               "ForAllValues:StringEquals" = {
                 "route53:ChangeResourceRecordSetsRecordTypes" = ["TXT"]

@@ -37,7 +37,7 @@ output "karpenter_interruption_queue" {
 
 output "name_servers" {
   description = "Delegate var.domain to these from its parent zone."
-  value       = aws_route53_zone.this.name_servers
+  value       = local.zone_name_servers
 }
 
 output "kubeconfig_command" {

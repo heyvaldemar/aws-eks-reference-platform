@@ -36,6 +36,16 @@ variable "domain" {
   }
 }
 
+variable "zone_id" {
+  description = <<-EOT
+    An existing Route 53 hosted zone for var.domain, already delegated. Empty
+    (the default): Terraform creates the zone. Validation runs (ADR 10) pass
+    the persistent zone from terraform/bootstrap-aws.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "acme_environment" {
   description = "Which Let's Encrypt the Gateway certificate comes from: staging (untrusted, generous limits) or production."
   type        = string
