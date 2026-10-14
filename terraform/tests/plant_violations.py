@@ -22,7 +22,10 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The module under test: terraform/ by default, or the directory named as the
+# first argument (python3 tests/plant_violations.py bootstrap-aws), which
+# carries its own tests/ and tests/plants.tsv.
+ROOT = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE = os.environ.get("TERRAFORM_IMAGE")
 BIN = os.environ.get("TERRAFORM_BIN")
 

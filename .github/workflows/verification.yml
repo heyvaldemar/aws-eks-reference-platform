@@ -110,6 +110,21 @@ jobs:
       - name: The test, shown each violation it exists for
         run: python3 tests/plant_violations.py
 
+      # The account bootstrap of ADR 10, applied once by the maintainer and
+      # never by CI: the same checks, and its own planted violations.
+      - name: bootstrap-aws, init, validate, tflint and test
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm -v "$PWD/bootstrap-aws:/mnt" -w /mnt "$TERRAFORM_IMAGE" init -backend=false -input=false -lockfile=readonly
+          docker run --rm -v "$PWD/bootstrap-aws:/mnt" -w /mnt "$TERRAFORM_IMAGE" validate
+          docker run --rm -e GITHUB_TOKEN -v "$PWD:/data" -w /data/bootstrap-aws --entrypoint sh "$TFLINT_IMAGE" \
+            -c 'tflint --init --config ../.tflint.hcl && tflint --config ../.tflint.hcl --format compact'
+          docker run --rm -v "$PWD/bootstrap-aws:/mnt" -w /mnt "$TERRAFORM_IMAGE" test
+
+      - name: bootstrap-aws, its test shown each violation it exists for
+        run: python3 tests/plant_violations.py bootstrap-aws
+
   manifests:
     name: Rendered manifests, and that each check can fail
     runs-on: ubuntu-latest

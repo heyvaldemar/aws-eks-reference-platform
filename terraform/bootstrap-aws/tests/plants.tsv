@@ -1,0 +1,8 @@
+# file	old	new	what the test must notice (each field JSON-encoded)
+"main.tf"	"\"${local.oidc_host}:sub\" = \"repo:${var.repository}:environment:${environment}\""	"\"${local.oidc_host}:sub\" = \"repo:${var.repository}:*\""	"a role trusted by every workflow of the repository, not one environment"
+"main.tf"	"\"ec2:Delete*\", \"ec2:TerminateInstances\","	"\"ec2:Delete*\", \"ec2:CreateVpc\", \"ec2:TerminateInstances\","	"a delete-only role that can create"
+"main.tf"	"roles      = [aws_iam_role.create.name]"	"roles      = [aws_iam_role.sweep.name]"	"a kill-switch that stops the sweeper instead of the creation role"
+"main.tf"	"\"budgets:*\", \"ce:Create*\""	"\"ce:Create*\""	"a workflow role that may change the budgets"
+"main.tf"	"Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, aws_iam_policy.deny_all.arn])"	"Resource = [aws_iam_openid_connect_provider.github.arn]"	"a creation role that may detach its own kill-switch"
+"main.tf"	"    status = \"Enabled\"\n  }\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\""	"    status = \"Suspended\"\n  }\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\""	"unversioned state"
+"variables.tf"	"var.kill_switch_usd > 0 && var.kill_switch_usd <= 50"	"var.kill_switch_usd > 0"	"a kill-switch with no ceiling"
