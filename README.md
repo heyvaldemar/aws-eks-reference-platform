@@ -4,6 +4,10 @@
 [![Verification](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/verification.yml/badge.svg)](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/workflows/verification.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/heyvaldemar/aws-eks-reference-platform/badge)](https://scorecard.dev/viewer/?uri=github.com/heyvaldemar/aws-eks-reference-platform)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15462/badge)](https://www.bestpractices.dev/projects/15462)
+[![e2e, last 30 days](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fheyvaldemar%2Faws-eks-reference-platform%2Fstatus%2Fbadge-days.json)](https://github.com/heyvaldemar/aws-eks-reference-platform/blob/status/status.json)
+[![checks](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fheyvaldemar%2Faws-eks-reference-platform%2Fstatus%2Fbadge-checks.json)](https://github.com/heyvaldemar/aws-eks-reference-platform/blob/status/status.json)
+
+The second row of badges is not typed by hand: it is the e2e workflow's last 30 days on main, rewritten after every run by [`.github/workflows/status.yml`](.github/workflows/status.yml) into the [`status`](https://github.com/heyvaldemar/aws-eks-reference-platform/tree/status) branch.
 
 A reference Kubernetes platform for Amazon EKS: Terraform for the cluster, Argo CD for everything on it, and a test suite that proves what the platform does instead of describing it. It is a reference architecture, not a product, and it does not run in production anywhere.
 

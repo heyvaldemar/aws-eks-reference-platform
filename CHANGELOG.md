@@ -13,6 +13,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - ADR 10 and the bootstrap README allow a member account in the maintainer's own AWS Organization, and say why an account that holds other work is the wrong place: the workflow roles can delete what they did not make.
 - The README points at [kubernetes-postgres-recovery](https://github.com/heyvaldemar/kubernetes-postgres-recovery), the database a tenant would run here, with the point-in-time recovery that Velero's volume snapshots cannot give it.
 
+### Added
+
+- Live status: every e2e run uploads its checks and measurements (`E2E_RESULTS`), and `.github/workflows/status.yml` rewrites the `status` branch after each run with the last 30 days on main: green days, the streak, the latest checks (`scripts/status.py`). The README's second row of badges reads it.
+
 ## [1.1.0] - 2026-10-13
 
 ### Added
