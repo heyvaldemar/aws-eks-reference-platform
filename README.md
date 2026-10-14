@@ -198,6 +198,8 @@ cosign verify-blob aws-eks-reference-platform-<tag>.tar.gz \
 
 [kubernetes-supply-chain-admission](https://github.com/heyvaldemar/kubernetes-supply-chain-admission) closes the largest open risk in this platform's threat model. The cluster runs an image only if this repository's own build signed it and attached provenance, an SBOM and a scan from the last day. A native policy keeps images from anywhere else out while Kyverno is down.
 
+[kubernetes-postgres-recovery](https://github.com/heyvaldemar/kubernetes-postgres-recovery) is the database a tenant would run here, with the backups this platform's Velero cannot give it. A volume snapshot of a running PostgreSQL is crash-consistent at best and has nothing between two snapshots; CloudNativePG archives WAL to a bucket, and a daily drill restores to a second before a `DROP TABLE`, fails over under writes with no acknowledged write lost, and rebuilds from the bucket alone.
+
 ## Questions, bugs and changes
 
 Open an [issue](https://github.com/heyvaldemar/aws-eks-reference-platform/issues) for a bug, a question or an idea. Security reports go privately, as [SECURITY.md](SECURITY.md) describes. Changes are welcome as pull requests: CI runs the same checks on them as on main, and a change ships with the check that proves it.
