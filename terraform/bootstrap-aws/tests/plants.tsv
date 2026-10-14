@@ -9,3 +9,4 @@
 "main.tf"	"Statement = concat([{ Sid = \"Ceiling\", Effect = \"Allow\", Action = \"*\", Resource = \"*\" }], local.deny_statements)"	"Statement = [{ Sid = \"Ceiling\", Effect = \"Allow\", Action = \"*\", Resource = \"*\" }]"	"a boundary without the guardrails' denies"
 "main.tf"	"    status = \"Enabled\"\n  }\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\""	"    status = \"Suspended\"\n  }\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\""	"unversioned state"
 "variables.tf"	"var.kill_switch_usd > 0 && var.kill_switch_usd <= 50"	"var.kill_switch_usd > 0"	"a kill-switch with no ceiling"
+"main.tf"	"include_credit = false"	"include_credit = true"	"a budget that counts credits, so an account on credits never reaches a threshold"

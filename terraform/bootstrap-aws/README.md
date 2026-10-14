@@ -20,7 +20,7 @@ Standing cost: about $0.50 a month for the hosted zone and cents for the state b
 
 ## Applying it
 
-1. In a new, standalone AWS account paid personally (ADR 10), sign in as an administrator, not as root, for example with IAM Identity Center and `aws sso login`.
+1. In an AWS account paid personally that holds nothing else (ADR 10), standalone or a member account of your own AWS Organization, sign in as an administrator, not as root: for example with IAM Identity Center and `aws sso login`, or from the management account through the member account's `OrganizationAccountAccessRole`. If the account you have is the one you use for everything, create a member account for this rather than applying it there: the workflow roles can delete what they did not make. Promotional credits are fine; the budget counts usage before them.
 2. From this directory:
 
    ```bash

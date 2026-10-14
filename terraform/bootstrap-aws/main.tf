@@ -337,6 +337,14 @@ resource "aws_budgets_budget" "monthly" {
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
+  # Credits are left out. AWS Budgets counts them by default, and an account
+  # running on promotional credits pays close to nothing net, so the alerts
+  # would never fire and the kill-switch would wait for the credits to run
+  # out. The thresholds are on what the runs use, whoever pays for it.
+  cost_types {
+    include_credit = false
+  }
+
   dynamic "notification" {
     for_each = var.alert_thresholds_usd
     content {

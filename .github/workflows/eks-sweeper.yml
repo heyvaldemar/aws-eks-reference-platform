@@ -63,12 +63,13 @@ jobs:
         run: |
           start="$(date -u -d yesterday +%F)"; end="$(date -u +%F)"
           {
-            echo "### The account's bill for $start"
+            echo "### What the account used on $start, before credits"
             echo
             echo "| Service | Cost |"
             echo "|---|---|"
             aws ce get-cost-and-usage --time-period "Start=$start,End=$end" --granularity DAILY \
               --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE \
+              --filter '{"Not":{"Dimensions":{"Key":"RECORD_TYPE","Values":["Credit","Refund"]}}}' \
               --query 'ResultsByTime[0].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' --output text |
               awk -F'\t' '$2 > 0.005 {printf "| %s | $%.2f |\n", $1, $2; t += $2} END {printf "| **Total** | **$%.2f** |\n", t}'
           } >> "$GITHUB_STEP_SUMMARY"

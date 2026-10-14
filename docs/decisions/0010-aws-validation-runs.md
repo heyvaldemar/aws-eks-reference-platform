@@ -11,7 +11,7 @@ ADR 9 makes a real EKS run manual and occasional. A run creates resources billed
 
 These are the conditions under which a run would be built and enabled. Each is required; none is optional.
 
-**Account.** A separate AWS account paid personally by the maintainer, standalone, not a member of any employer's organization and not linked to one. Nothing else runs in it.
+**Account.** A separate AWS account paid personally by the maintainer: standalone, or a member account in the maintainer's own AWS Organization, never in an employer's organization or linked to one. Nothing else runs in it. The workflow roles can create and delete what a run needs, and the sweeper deletes on a schedule; in an account that also holds other work, those rights would reach it. The budget measures usage before credits, so an account on promotional credits still reaches its thresholds.
 
 **Trigger.** `workflow_dispatch` only, before a release. Never a schedule, never a push.
 

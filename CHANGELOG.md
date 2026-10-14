@@ -4,7 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Fixed
+
+- `bootstrap-aws`: the budget counted credits, as AWS Budgets does by default, so in an account running on promotional credits the $5 and $10 alerts and the $15 kill switch would never fire, and a run left running would spend the credits instead. It now measures usage before credits (`cost_types.include_credit = false`), with a test and a planted violation. The sweeper's daily table leaves credits and refunds out for the same reason.
+
+### Changed
+
+- ADR 10 and the bootstrap README allow a member account in the maintainer's own AWS Organization, and say why an account that holds other work is the wrong place: the workflow roles can delete what they did not make.
 
 ## [1.1.0] - 2026-10-13
 
