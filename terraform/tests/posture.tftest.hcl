@@ -270,3 +270,24 @@ run "existing_zone_for_another_domain" {
 
   expect_failures = [data.aws_route53_zone.existing]
 }
+
+# A validation run passes the bootstrap's permissions boundary; every role
+# this configuration creates must carry it, or the run's role could not
+# create it (and a role without it would be a way around the guardrails).
+run "permissions_boundary" {
+  command = plan
+
+  variables {
+    iam_permissions_boundary = "arn:aws:iam::123456789012:policy/platform-validation-boundary"
+  }
+
+  assert {
+    condition = alltrue([
+      for r in concat(
+        [aws_iam_role.cluster, aws_iam_role.node, aws_iam_role.karpenter_node, aws_iam_role.flow_logs, aws_iam_role.vpc_cni, aws_iam_role.ebs_csi],
+        values(aws_iam_role.controller)
+      ) : r.permissions_boundary == "arn:aws:iam::123456789012:policy/platform-validation-boundary"
+    ])
+    error_message = "every IAM role the configuration creates carries the permissions boundary"
+  }
+}

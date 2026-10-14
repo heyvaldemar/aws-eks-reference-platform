@@ -4,7 +4,8 @@
 # Karpenter capacity (manifests/aws/karpenter.yaml).
 
 resource "aws_iam_role" "node" {
-  name = "${var.cluster_name}-system-node"
+  name                 = "${var.cluster_name}-system-node"
+  permissions_boundary = var.iam_permissions_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

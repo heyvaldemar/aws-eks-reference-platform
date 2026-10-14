@@ -42,6 +42,11 @@ override_resource {
   values          = { arn = "arn:aws:iam::123456789012:policy/platform-validation-guardrails" }
 }
 override_resource {
+  target          = aws_iam_policy.boundary
+  override_during = plan
+  values          = { arn = "arn:aws:iam::123456789012:policy/platform-validation-boundary" }
+}
+override_resource {
   target          = aws_iam_role.create
   override_during = plan
   values          = { arn = "arn:aws:iam::123456789012:role/platform-validation-create" }
@@ -72,24 +77,50 @@ run "guardrails" {
   command = plan
 
   assert {
-    condition     = contains(jsondecode(aws_iam_policy.guardrails.policy).Statement[0].Action, "iam:CreateAccessKey")
+    condition     = contains(one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "NoLongLivedCredentials"]).Action, "iam:CreateAccessKey")
     error_message = "no workflow role may mint long-lived credentials"
   }
   assert {
-    condition     = contains(jsondecode(aws_iam_policy.guardrails.policy).Statement[1].Action, "budgets:*")
+    condition     = contains(one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "NoAccountOrBillingChanges"]).Action, "budgets:*")
     error_message = "no workflow role may touch the budgets or the kill-switch"
   }
   assert {
-    condition     = contains(jsondecode(aws_iam_policy.guardrails.policy).Statement[2].Resource, "arn:aws:iam::123456789012:role/platform-validation-create")
-    error_message = "the creation role cannot change itself, so it cannot detach the kill-switch"
+    condition = alltrue([for arn in [
+      "arn:aws:iam::123456789012:role/platform-validation-create",
+      "arn:aws:iam::123456789012:policy/platform-validation-guardrails",
+      "arn:aws:iam::123456789012:policy/platform-validation-boundary",
+      "arn:aws:iam::123456789012:policy/platform-validation-deny-all",
+    ] : contains(one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "BootstrapIsNotTheirs"]).Resource, arn)])
+    error_message = "a workflow role cannot change itself, its guardrails, the boundary or the kill-switch's policy"
   }
   assert {
-    condition     = jsondecode(aws_iam_policy.guardrails.policy).Statement[5].Condition.StringNotEquals["aws:RequestedRegion"] == "us-east-1"
+    condition     = one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "EveryRoleCarriesTheBoundary"]).Condition.StringNotEquals["iam:PermissionsBoundary"] == "arn:aws:iam::123456789012:policy/platform-validation-boundary"
+    error_message = "no role can be created without the permissions boundary"
+  }
+  assert {
+    condition     = one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "OnlyTheRunsRoles"]).NotResource == ["arn:aws:iam::123456789012:role/reference-platform*"]
+    error_message = "a workflow role may change and pass only the run's own roles"
+  }
+  assert {
+    condition     = one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "OneRegion"]).Condition.StringNotEquals["aws:RequestedRegion"] == "us-east-1"
     error_message = "regional services are denied outside the one region"
   }
   assert {
     condition     = aws_iam_role_policy_attachment.create_guardrails.policy_arn == aws_iam_policy.guardrails.arn && aws_iam_role_policy_attachment.sweep_guardrails.policy_arn == aws_iam_policy.guardrails.arn
     error_message = "both workflow roles carry the guardrails"
+  }
+}
+
+run "boundary" {
+  command = plan
+
+  assert {
+    condition     = jsondecode(aws_iam_policy.boundary.policy).Statement[0].Effect == "Allow" && jsondecode(aws_iam_policy.boundary.policy).Statement[0].Action == "*"
+    error_message = "the boundary is a ceiling with the guardrails' denies in it"
+  }
+  assert {
+    condition     = toset([for st in jsondecode(aws_iam_policy.boundary.policy).Statement : st.Sid if st.Effect == "Deny"]) == toset([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st.Sid])
+    error_message = "a role a run creates inherits every one of the guardrails' denies"
   }
 }
 

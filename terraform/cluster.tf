@@ -59,7 +59,8 @@ resource "aws_kms_key" "logs" {
 # --- control plane -------------------------------------------------------------
 
 resource "aws_iam_role" "cluster" {
-  name = "${var.cluster_name}-cluster"
+  name                 = "${var.cluster_name}-cluster"
+  permissions_boundary = var.iam_permissions_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

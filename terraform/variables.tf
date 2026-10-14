@@ -46,6 +46,16 @@ variable "zone_id" {
   default     = ""
 }
 
+variable "iam_permissions_boundary" {
+  description = <<-EOT
+    A permissions boundary every IAM role this configuration creates carries.
+    Validation runs (ADR 10) pass the one from terraform/bootstrap-aws, which
+    their role cannot create a role without. Null (the default): none.
+  EOT
+  type        = string
+  default     = null
+}
+
 variable "acme_environment" {
   description = "Which Let's Encrypt the Gateway certificate comes from: staging (untrusted, generous limits) or production."
   type        = string

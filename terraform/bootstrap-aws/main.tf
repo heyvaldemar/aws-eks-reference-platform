@@ -17,6 +17,12 @@ locals {
     "arn:${local.partition}:iam::${local.account}:role/platform-validation-sweep",
     "arn:${local.partition}:iam::${local.account}:role/platform-validation-budget-action",
   ]
+  # Built from names, not resource references: the guardrails protect their
+  # own policy, and a policy cannot refer to its own ARN.
+  guardrails_arn = "arn:${local.partition}:iam::${local.account}:policy/platform-validation-guardrails"
+  boundary_arn   = "arn:${local.partition}:iam::${local.account}:policy/platform-validation-boundary"
+  deny_all_arn   = "arn:${local.partition}:iam::${local.account}:policy/platform-validation-deny-all"
+  run_roles      = "arn:${local.partition}:iam::${local.account}:role/${var.cluster_name_prefix}*"
 }
 
 # --- GitHub OIDC ---------------------------------------------------------------
@@ -50,62 +56,98 @@ locals {
 # --- Guardrails every workflow role carries -------------------------------------
 
 locals {
-  guardrails = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "NoLongLivedCredentials"
-        Effect   = "Deny"
-        Action   = ["iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile", "iam:UpdateLoginProfile", "iam:CreateServiceSpecificCredential"]
-        Resource = "*"
-      },
-      {
-        Sid    = "NoAccountOrBillingChanges"
-        Effect = "Deny"
-        Action = [
-          "organizations:*", "account:*", "aws-portal:*", "billing:*", "payments:*", "tax:*",
-          "budgets:*", "ce:Create*", "ce:Update*", "ce:Delete*",
-        ]
-        Resource = "*"
-      },
-      {
-        Sid      = "BootstrapRolesAreNotTheirs"
-        Effect   = "Deny"
-        Action   = "iam:*"
-        Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, aws_iam_policy.deny_all.arn])
-      },
-      {
-        Sid    = "StateBucketStaysAsBuilt"
-        Effect = "Deny"
-        Action = [
-          "s3:DeleteBucket", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy", "s3:PutBucketVersioning",
-          "s3:PutLifecycleConfiguration", "s3:PutBucketPublicAccessBlock", "s3:PutEncryptionConfiguration",
-        ]
-        Resource = aws_s3_bucket.state.arn
-      },
-      {
-        Sid      = "ValidationZoneStays"
-        Effect   = "Deny"
-        Action   = "route53:DeleteHostedZone"
-        Resource = aws_route53_zone.validation.arn
-      },
-      {
-        Sid    = "OneRegion"
-        Effect = "Deny"
-        NotAction = [
-          "iam:*", "sts:*", "route53:*", "route53domains:*", "cloudfront:*", "budgets:*", "ce:*",
-          "health:*", "support:*", "organizations:*", "account:*", "tag:GetResources",
-        ]
-        Resource  = "*"
-        Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
-      },
-    ]
+  # Shared by the guardrails (on the workflow roles) and the permissions
+  # boundary (on every role a run creates). Without the boundary, a role with
+  # AdministratorAccess escapes any deny attached to it by creating another
+  # role without one and assuming it; with it, a role a run creates inherits
+  # the same denies, and no role can be created without it.
+  deny_statements = [
+    {
+      Sid      = "NoLongLivedCredentials"
+      Effect   = "Deny"
+      Action   = ["iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile", "iam:UpdateLoginProfile", "iam:CreateServiceSpecificCredential"]
+      Resource = "*"
+    },
+    {
+      Sid    = "NoAccountOrBillingChanges"
+      Effect = "Deny"
+      Action = [
+        "organizations:*", "account:*", "aws-portal:*", "billing:*", "payments:*", "tax:*",
+        "budgets:*", "ce:Create*", "ce:Update*", "ce:Delete*",
+      ]
+      Resource = "*"
+    },
+    {
+      Sid      = "BootstrapIsNotTheirs"
+      Effect   = "Deny"
+      Action   = "iam:*"
+      Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn, local.guardrails_arn, local.boundary_arn])
+    },
+    {
+      Sid       = "EveryRoleCarriesTheBoundary"
+      Effect    = "Deny"
+      Action    = ["iam:CreateRole", "iam:PutRolePermissionsBoundary"]
+      Resource  = "*"
+      Condition = { StringNotEquals = { "iam:PermissionsBoundary" = local.boundary_arn } }
+    },
+    {
+      Sid      = "TheBoundaryStays"
+      Effect   = "Deny"
+      Action   = "iam:DeleteRolePermissionsBoundary"
+      Resource = "*"
+    },
+    {
+      Sid    = "OnlyTheRunsRoles"
+      Effect = "Deny"
+      Action = [
+        "iam:CreateRole", "iam:UpdateRole", "iam:UpdateAssumeRolePolicy", "iam:AttachRolePolicy", "iam:PutRolePolicy",
+        "iam:DetachRolePolicy", "iam:DeleteRolePolicy", "iam:PutRolePermissionsBoundary", "iam:PassRole",
+      ]
+      NotResource = [local.run_roles]
+    },
+    {
+      Sid    = "StateBucketStaysAsBuilt"
+      Effect = "Deny"
+      Action = [
+        "s3:DeleteBucket", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy", "s3:PutBucketVersioning",
+        "s3:PutLifecycleConfiguration", "s3:PutBucketPublicAccessBlock", "s3:PutEncryptionConfiguration",
+      ]
+      Resource = aws_s3_bucket.state.arn
+    },
+    {
+      Sid      = "ValidationZoneStays"
+      Effect   = "Deny"
+      Action   = "route53:DeleteHostedZone"
+      Resource = aws_route53_zone.validation.arn
+    },
+    {
+      Sid    = "OneRegion"
+      Effect = "Deny"
+      NotAction = [
+        "iam:*", "sts:*", "route53:*", "route53domains:*", "cloudfront:*", "budgets:*", "ce:*",
+        "health:*", "support:*", "organizations:*", "account:*", "tag:GetResources",
+      ]
+      Resource  = "*"
+      Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
+    },
+  ]
+
+  guardrails = jsonencode({ Version = "2012-10-17", Statement = local.deny_statements })
+  boundary = jsonencode({
+    Version   = "2012-10-17"
+    Statement = concat([{ Sid = "Ceiling", Effect = "Allow", Action = "*", Resource = "*" }], local.deny_statements)
   })
 }
 
 resource "aws_iam_policy" "guardrails" {
   name   = "platform-validation-guardrails"
   policy = local.guardrails
+}
+
+resource "aws_iam_policy" "boundary" {
+  name        = "platform-validation-boundary"
+  description = "The permissions boundary every IAM role a validation run creates must carry."
+  policy      = local.boundary
 }
 
 # --- The creation role -------------------------------------------------------------

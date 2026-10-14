@@ -4,7 +4,8 @@
 # maintenance, rebalance) so it can drain the node before AWS takes it.
 
 resource "aws_iam_role" "karpenter_node" {
-  name = "${var.cluster_name}-karpenter-node"
+  name                 = "${var.cluster_name}-karpenter-node"
+  permissions_boundary = var.iam_permissions_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

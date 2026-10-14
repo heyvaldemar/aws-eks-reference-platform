@@ -130,9 +130,10 @@ locals {
 }
 
 resource "aws_iam_role" "controller" {
-  for_each           = local.controllers
-  name               = "${var.cluster_name}-${each.key}"
-  assume_role_policy = local.pod_identity_trust
+  for_each             = local.controllers
+  name                 = "${var.cluster_name}-${each.key}"
+  permissions_boundary = var.iam_permissions_boundary
+  assume_role_policy   = local.pod_identity_trust
 }
 
 resource "aws_iam_role_policy" "controller" {

@@ -85,8 +85,9 @@ locals {
 }
 
 resource "aws_iam_role" "vpc_cni" {
-  name               = "${var.cluster_name}-vpc-cni"
-  assume_role_policy = local.pod_identity_trust
+  name                 = "${var.cluster_name}-vpc-cni"
+  permissions_boundary = var.iam_permissions_boundary
+  assume_role_policy   = local.pod_identity_trust
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_cni" {
@@ -95,8 +96,9 @@ resource "aws_iam_role_policy_attachment" "vpc_cni" {
 }
 
 resource "aws_iam_role" "ebs_csi" {
-  name               = "${var.cluster_name}-ebs-csi"
-  assume_role_policy = local.pod_identity_trust
+  name                 = "${var.cluster_name}-ebs-csi"
+  permissions_boundary = var.iam_permissions_boundary
+  assume_role_policy   = local.pod_identity_trust
 }
 
 resource "aws_iam_role_policy_attachment" "ebs_csi" {

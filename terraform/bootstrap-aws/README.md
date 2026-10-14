@@ -9,7 +9,8 @@ What ADR 10 asks of the AWS account before the first validation run, applied onc
 | GitHub OIDC provider | workflows get short-lived credentials; no access key exists anywhere |
 | `platform-validation-create` role | assumed only by this repository's `aws-validation` environment; creates and destroys a run |
 | `platform-validation-sweep` role | assumed only by the `aws-sweeper` environment; reads everything, deletes what a run makes, creates nothing |
-| Guardrails on both roles | no IAM users or access keys, no billing or budget changes, no change to the bootstrap's own roles, state bucket or zone, one region |
+| Guardrails on both roles | no IAM users or access keys, no billing or budget changes, no change to the bootstrap's own roles, policies, state bucket or zone, one region; roles changed or passed only under the run's name prefix |
+| Permissions boundary | every role a run creates must carry it, and it carries the guardrails' denies, so creating a role is not a way around them |
 | State bucket | versioned, encrypted, private, TLS only; one state file per run |
 | Validation zone | delegated once, kept between runs, so certificates issue for real |
 | Budget with alerts at $5 and $10 | e-mail to the maintainer |
@@ -29,12 +30,16 @@ Standing cost: about $0.50 a month for the hosted zone and cents for the state b
 
 3. Delegate `validation_domain` once: create an NS record for it in the parent zone with the four `name_servers` from the output.
 4. Keep this directory's `terraform.tfstate` somewhere safe and private (it holds no credentials, but it is the only record of the bootstrap). It is local on purpose: this module creates the bucket every other state lives in.
-5. Put the outputs into the GitHub environments, as variables (none is a secret). In GitHub's environment settings, make `aws-validation` require the maintainer's approval, so a dispatched run waits for a second yes before it spends anything:
+5. Put the outputs into the GitHub environments, as variables (none is a secret), and limit both environments to the `main` branch. Not a required reviewer: the teardown job runs in the same environment, and a teardown that waits for a person is how resources keep billing. The run itself asks for a typed confirmation when it is dispatched:
 
    | Environment | Variables |
    |---|---|
-   | `aws-validation` | `AWS_REGION`, `AWS_CREATE_ROLE_ARN`, `TF_STATE_BUCKET`, `VALIDATION_DOMAIN`, `VALIDATION_ZONE_ID` |
+   | `aws-validation` | `AWS_REGION`, `AWS_CREATE_ROLE_ARN`, `TF_STATE_BUCKET`, `VALIDATION_DOMAIN`, `VALIDATION_ZONE_ID`, `IAM_PERMISSIONS_BOUNDARY` |
    | `aws-sweeper` | `AWS_REGION`, `AWS_SWEEP_ROLE_ARN`, `TF_STATE_BUCKET` |
+
+## What it does not stop
+
+The creation role is an administrator inside the boundary. A workflow that runs as it could create a role under the run's prefix, with the boundary, that trusts someone outside the account; the kill-switch would not reach that role, because AWS Budgets attaches its policy to named roles only. The protection there is who can run the workflow: a manual dispatch on `main`, by someone with write access to this repository. The sweeper deletes roles under the prefix that outlive their run.
 
 ## After the kill-switch fires
 

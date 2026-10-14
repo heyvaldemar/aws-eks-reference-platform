@@ -21,3 +21,5 @@ terraform.rc
 
 # Written by `make tunnel`.
 /platform-ca.crt
+__pycache__/
+*.pyc
