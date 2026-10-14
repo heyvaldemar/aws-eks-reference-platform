@@ -28,6 +28,41 @@ for a in json.load(sys.stdin)["items"]:
             print("   ", m[:400])
 '
 
+# A sync that waits names the object, "waiting for healthy state of
+# monitoring.coreos.com/Prometheus/x", and nothing else: Argo CD 3 keeps no
+# per-resource health in the Application, so the loop above cannot show why.
+# The object's own status can.
+section "What the waiting syncs wait on"
+kubectl -n argocd get applications.argoproj.io -o json | python3 -c '
+import json, re, sys
+seen = set()
+for a in json.load(sys.stdin)["items"]:
+    msg = a.get("status", {}).get("operationState", {}).get("message", "")
+    for group, kind, name in re.findall(r"healthy state of ([^/\s]*)/([^/\s]+)/([^\s,]+)", msg):
+        if (group, kind, name) not in seen:
+            seen.add((group, kind, name))
+            print("%s.%s" % (kind, group) if group else kind, name)
+' | while read -r resource name; do
+  kubectl get "$resource" -A --field-selector "metadata.name=$name" -o json 2>&1 | python3 -c '
+import json, sys
+raw = sys.stdin.read()
+try:
+    items = json.loads(raw)["items"]
+except ValueError:
+    print("---", sys.argv[1], sys.argv[2], "(not readable)"); print("   ", raw.strip()[:400]); sys.exit()
+if not items:
+    print("---", sys.argv[1], sys.argv[2], "not found")
+for o in items:
+    print("---", sys.argv[1], "%s/%s" % (o["metadata"].get("namespace", ""), o["metadata"]["name"]))
+    st = o.get("status", {})
+    for c in st.get("conditions", []):
+        print("    %s=%s %s: %s" % (c.get("type"), c.get("status"), c.get("reason", ""), c.get("message", "")[:300]))
+    rest = {k: v for k, v in st.items() if k != "conditions" and not isinstance(v, (dict, list))}
+    if rest:
+        print("   ", rest)
+' "$resource" "$name"
+done
+
 section "Pods not Running or not Ready"
 kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" || $3 ~ /^0\//'
 
