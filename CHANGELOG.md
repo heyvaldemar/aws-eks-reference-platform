@@ -4,7 +4,27 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Added
+
+- `tools/kubectl-tenant`, onboarding as a command. `kubectl tenant new <team>` writes `apps/<team>` from the template and refuses the names the tenant chart refuses, read from `platform/tenant/values.yaml` so the two lists cannot drift apart. `kubectl tenant check <team>` reports from the files alone what admission would refuse: an image without a digest, missing requests, no memory limit, missing probes, a privileged container, the host network. Its tests rebuild `apps/team-b`, made by hand, and fail if the command's result differs.
+- `terraform/bootstrap-aws`, the account ADR 10 asks for: GitHub OIDC roles trusted per environment, a creation role held by guardrails and by a permissions boundary that every role it creates must carry, a sweep role that reads, deletes and rewrites a run's state but creates nothing, a versioned state bucket, budget alerts at $5 and $10, and a kill switch at $15 that attaches deny-all to the creation role. Its tests run against a mocked provider, and each guardrail is shown a planted violation it must catch (10 plants).
+- The EKS validation run, built and not yet applied (`.github/workflows/eks-validation.yml`). It is dispatched by hand with `confirm: SPEND` from `main` only, keeps one state per run, and runs seven checks against the live cluster (`tests/eks/run.sh`): every Application synced and healthy, admission refusing its plants, IMDSv2 with a hop limit of 1 on the nodes, the ExternalDNS record, a Let's Encrypt certificate served by the NLB, Karpenter's NodePool and EC2NodeClass ready, and a Velero backup with objects in the bucket. Teardown is a separate job that runs whatever the first one did, then a residue check fails on anything the run left behind, and a cost report prices the run's resource-hours. A daily sweeper (`eks-sweeper.yml`) deletes what a broken run left and stays off until the repository variable `AWS_VALIDATION_ENABLED` is `true`.
+- Terraform: `zone_id` uses an existing, delegated Route 53 zone instead of creating one, and refuses a zone whose name is not the domain; `iam_permissions_boundary` sets a permissions boundary on all seven IAM roles the module creates.
+- `docs/engagement/`: an executive summary, discovery questions, a success plan whose eleven criteria map to e2e steps, an adoption plan from Docker Compose to a tenant, sizing, and handover.
+- CodeQL (security-extended) for Python, Go and the workflows, on every push and weekly.
+- The OpenSSF Best Practices badge, passing, and a README section on where a bug, a question or a change goes.
+
+### Changed
+
+- The README lists the known limitations in one place.
+- ADR 5 cites [kyverno/kyverno#6554](https://github.com/kyverno/kyverno/issues/6554): Kyverno deletes its own webhook configurations when its admission controller scales to zero, by design since 1.9.
+- CI's one Python package, PyYAML, is installed with `--require-hashes`.
+- `scripts/diagnose.sh` prints the conditions of the object a waiting Argo CD sync waits on. Argo CD 3 keeps no per-resource health in the Application, so a timed-out run said only which object, never why.
+- Charts: argo-cd 10.10.3, kube-prometheus-stack 92.3.1, opentelemetry-collector 0.176.0. The rendered manifests differ only in the chart version labels.
+
+### Security
+
+- `bootstrap-aws`, before it was ever released: the creation role could create a role without the guardrails, or rewrite the guardrails policy, and act through either. Every role it creates must now carry the permissions boundary, the bootstrap's own roles and policies are out of its reach, and the roles it may touch are limited to the run's prefix. Found in review before any account was created. What it still does not stop is written down in `terraform/bootstrap-aws/README.md`.
 
 ## [1.0.1] - 2026-10-13
 
