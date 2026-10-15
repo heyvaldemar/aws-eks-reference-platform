@@ -25,3 +25,4 @@
 "variables.tf"	"can(cidrhost(c, 0)) && !endswith(c, \"/0\")"	"can(cidrhost(c, 0))"	"an API endpoint open to 0.0.0.0/0 accepted"
 "karpenter.tf"	"  name                 = \"${var.cluster_name}-karpenter-node\"\n  permissions_boundary = var.iam_permissions_boundary\n"	"  name                 = \"${var.cluster_name}-karpenter-node\"\n"	"a role created without the permissions boundary"
 "karpenter.tf"	"    capacity-interruption = {\n"	"    capacity-reservation-interruption = {\n"	"an EventBridge rule name that runs past 64 characters"
+"addons.tf"	"version = \"v0.9.0-eksbuild.11\""	"version = null"	"metrics-server on the default build that breaks the OpenAPI Argo CD reads"

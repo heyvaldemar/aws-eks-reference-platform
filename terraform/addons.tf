@@ -48,15 +48,27 @@ resource "aws_eks_addon" "before_nodes" {
 }
 
 # Need schedulable nodes to become active.
+#
+# metrics-server is held at v0.9.0-eksbuild.11. eksbuild.12, the default for
+# Kubernetes 1.37 in October 2026, is built with Go 1.27, whose default
+# jsonv2 experiment makes kube-openapi leak field names into the schema it
+# publishes; the API server then answers /openapi/v2 as protobuf with 503,
+# and Argo CD cannot build its cluster cache ("error getting openapi
+# resources: the server is currently unable to handle the request"). The
+# first EKS validation runs found it; eksbuild.11 is the last build on Go
+# 1.26 (go1.26.6, read from the binary). Upstream:
+# https://github.com/kubernetes-sigs/metrics-server/issues/1868. Lift the pin
+# when a build carries the kube-openapi fix.
 resource "aws_eks_addon" "after_nodes" {
   for_each = {
-    coredns            = { service_account = null, role_arn = null }
-    metrics-server     = { service_account = null, role_arn = null }
-    aws-ebs-csi-driver = { service_account = "ebs-csi-controller-sa", role_arn = aws_iam_role.ebs_csi.arn }
+    coredns            = { service_account = null, role_arn = null, version = null }
+    metrics-server     = { service_account = null, role_arn = null, version = "v0.9.0-eksbuild.11" }
+    aws-ebs-csi-driver = { service_account = "ebs-csi-controller-sa", role_arn = aws_iam_role.ebs_csi.arn, version = null }
   }
 
   cluster_name                = aws_eks_cluster.this.name
   addon_name                  = each.key
+  addon_version               = each.value.version
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
 

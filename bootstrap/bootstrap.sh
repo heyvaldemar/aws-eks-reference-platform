@@ -73,6 +73,29 @@ if ! kubectl wait --for=condition=Available apiservice --all --timeout=600s >/de
   exit 1
 fi
 
+# Available is not enough: Argo CD reads the merged OpenAPI document as
+# protobuf, and one aggregated API built with Go 1.27 (metrics-server
+# v0.9.0-eksbuild.12) makes the API server answer that with 503 while JSON
+# still works. Ask the way Argo CD asks, and say so if it fails.
+say "the cluster's OpenAPI, read as Argo CD reads it"
+port=$(( 20000 + RANDOM % 20000 ))
+kubectl proxy --port="$port" >/dev/null 2>&1 &
+proxy=$!
+code=000
+for _ in $(seq 1 30); do
+  code="$(curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf' "http://127.0.0.1:$port/openapi/v2" || true)"
+  [ "$code" = 200 ] && break
+  sleep 10
+done
+kill "$proxy" 2>/dev/null || true
+if [ "$code" != 200 ]; then
+  echo "/openapi/v2 as protobuf answers HTTP $code; Argo CD cannot build its cluster cache on this cluster." >&2
+  echo "An aggregated API built with Go 1.27 does this (https://github.com/kubernetes-sigs/metrics-server/issues/1868):" >&2
+  kubectl get apiservices -o jsonpath='{range .items[?(@.spec.service)]}  {.metadata.name}{"\n"}{end}' >&2
+  exit 1
+fi
+
 # --- 1. Argo CD ---------------------------------------------------------------
 ARGOCD_CHART_VERSION="$(sed -n 's/^ *targetRevision: \([0-9][0-9.]*\)$/\1/p' "$ROOT/platform/appsets/argo-cd.yaml" | head -1)"
 [ -n "$ARGOCD_CHART_VERSION" ] || { echo "could not read the argo-cd chart version" >&2; exit 1; }

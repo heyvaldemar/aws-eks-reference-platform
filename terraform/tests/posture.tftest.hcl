@@ -328,3 +328,14 @@ run "names_fit_the_longest_cluster_name" {
     error_message = "the interruption queue name is longer than 80 characters"
   }
 }
+
+# metrics-server's default EKS build for 1.37 breaks the cluster's OpenAPI
+# for protobuf clients, Argo CD among them (terraform/addons.tf).
+run "metrics_server_held_on_a_go_1_26_build" {
+  command = plan
+
+  assert {
+    condition     = aws_eks_addon.after_nodes["metrics-server"].addon_version == "v0.9.0-eksbuild.11"
+    error_message = "metrics-server is held at v0.9.0-eksbuild.11 until a build carries the kube-openapi fix"
+  }
+}
