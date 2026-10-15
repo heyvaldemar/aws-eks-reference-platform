@@ -100,5 +100,9 @@ eks-bootstrap: tools
 # billing. They go first, while the controllers that made them still run.
 eks-down: guard-spend
 	./scripts/eks-cleanup.sh
+	./scripts/aws-controller-cleanup.sh "$$($(TF) output -raw cluster_name)" before
+	$(TF) destroy -input=false -auto-approve -target=aws_eks_cluster.this -var "domain=$$($(TF) output -raw domain)" \
+	  -var 'cluster_endpoint_public_access_cidrs=["$(shell curl -fsS https://checkip.amazonaws.com | tr -d '\n')/32"]'
+	./scripts/aws-controller-cleanup.sh "$$($(TF) output -raw cluster_name)" after
 	$(TF) destroy -input=false -auto-approve -var "domain=$$($(TF) output -raw domain)" \
 	  -var 'cluster_endpoint_public_access_cidrs=["$(shell curl -fsS https://checkip.amazonaws.com | tr -d '\n')/32"]'

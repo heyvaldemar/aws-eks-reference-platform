@@ -94,6 +94,15 @@ kubectl get apiservices -o jsonpath='{range .items[?(@.spec.service)]}{.spec.gro
     if kubectl get --raw "/apis/$gv" >/dev/null 2>&1; then echo answers; else kubectl get --raw "/apis/$gv" 2>&1 | head -1; fi
   done
 
+section "Certificates, ACME orders and challenges, Gateways"
+# An Application that stays Progressing after a clean sync is usually one of
+# these: a certificate not issued, or a Gateway without an address.
+kubectl get certificates.cert-manager.io -A -o wide 2>&1 | sed 's/^/  /'
+kubectl get orders.acme.cert-manager.io,challenges.acme.cert-manager.io -A -o wide 2>&1 | sed 's/^/  /'
+kubectl get certificates.cert-manager.io -A -o jsonpath='{range .items[?(@.status.conditions[0].status!="True")]}{.metadata.namespace}/{.metadata.name}{": "}{.status.conditions[0].reason}{" "}{.status.conditions[0].message}{"\n"}{end}' 2>&1 | sed 's/^/  not ready: /'
+kubectl get challenges.acme.cert-manager.io -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{.spec.dnsName}{": "}{.status.state}{" "}{.status.reason}{"\n"}{end}' 2>&1 | sed 's/^/  challenge: /'
+kubectl get gateways.gateway.networking.k8s.io -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" address="}{.status.addresses[0].value}{" "}{range .status.conditions[*]}{.type}={.status}({.reason}) {end}{"\n"}{end}' 2>&1 | sed 's/^/  gateway: /'
+
 section "Pods not Running or not Ready"
 kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" || $3 ~ /^0\//'
 

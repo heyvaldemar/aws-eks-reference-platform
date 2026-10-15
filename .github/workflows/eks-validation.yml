@@ -251,12 +251,21 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER_NAME"
           ./scripts/eks-cleanup.sh
 
+      # In three steps, because controllers inside the cluster made AWS
+      # resources Terraform does not know: the load balancers go before the
+      # cluster, the cluster goes, then its controllers' security groups and
+      # any volume left available, and only then the network.
       - name: Destroy
         if: steps.state.outputs.applied == 'true'
         run: |
           ip="$(curl -fsS https://checkip.amazonaws.com | tr -d '\n')"
-          terraform -chdir=terraform destroy -input=false -auto-approve -var-file="$PWD/run.tfvars.json" \
-            -var "cluster_endpoint_public_access_cidrs=[\"$ip/32\"]"
+          vars=(-var-file="$PWD/run.tfvars.json" -var "cluster_endpoint_public_access_cidrs=[\"$ip/32\"]")
+          cleanup=0
+          ./scripts/aws-controller-cleanup.sh "$CLUSTER_NAME" before || cleanup=1
+          terraform -chdir=terraform destroy -input=false -auto-approve -target=aws_eks_cluster.this "${vars[@]}"
+          ./scripts/aws-controller-cleanup.sh "$CLUSTER_NAME" after || cleanup=1
+          terraform -chdir=terraform destroy -input=false -auto-approve "${vars[@]}"
+          [ "$cleanup" = 0 ] || { echo "::warning::something the cluster's controllers made could not be deleted; the residue search below says what"; }
 
       - name: Nothing left behind
         run: ./scripts/aws-residue.sh "$RUN_ID" "$CLUSTER_NAME"
