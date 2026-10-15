@@ -44,6 +44,10 @@ jobs:
       - name: Create the kind cluster
         run: kind create cluster --config kind/cluster.yaml --wait 120s
 
+      - name: Fetch the Docker Official Images from Google's mirror
+        # ECR Public throttles anonymous pulls by runner address; see the script.
+        run: ./scripts/kind-prefetch.sh reference-platform .
+
       - name: Bootstrap Argo CD at this commit
         env:
           PLATFORM_REPO_URL: https://github.com/${{ github.repository }}
@@ -123,6 +127,10 @@ jobs:
           # of that release has them.
           git worktree add -q ../previous "$TAG"
           kind create cluster --config ../previous/kind/cluster.yaml --wait 120s
+          # The images both releases pin from ECR Public, from Google's mirror
+          # by the same digest: twice on 15 October this install waited out
+          # helm's ten minutes behind a 429 for argocd-redis.
+          ./scripts/kind-prefetch.sh reference-platform ../previous .
           ../previous/bootstrap/bootstrap.sh kind
           ./scripts/wait-for-platform.sh 1500
 

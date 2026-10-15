@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The kind e2e no longer depends on ECR Public's patience with GitHub's shared runner addresses. Twice on 15 October the upgrade job waited out helm's ten minutes on `argocd-redis` behind "429 Too Many Requests" from public.ecr.aws, while the fresh install on another runner passed all 56 checks. `scripts/kind-prefetch.sh` now pulls every Docker Official Image the platform pins from ECR Public into each kind node from mirror.gcr.io, by the same digest, and names it as the platform does, so the kubelet finds it present and never asks ECR. Both jobs run it, the upgrade job for the previous release's pins as well as this commit's.
 - The bootstrap README now says that AWS Budgets e-mails only verified addresses since 30 September 2026: the alerts went nowhere for a day because the verification link from the apply had lapsed. How to send it again is in the same step.
 - The daily sweeper failed on the seventh run's state: the lock of a local `terraform destroy` stopped by hand was still in the bucket, and the state still listed a VPC removed by hand. The lock is gone and the state empty. The sweeper itself now cleans in the run's order (`aws-controller-cleanup.sh` before and after a targeted destroy of the cluster), so controller security groups no longer keep a VPC from being deleted.
 
