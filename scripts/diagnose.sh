@@ -76,13 +76,18 @@ for path in /openapi/v2 /openapi/v3; do
   printf '  %s as JSON: ' "$path"
   if kubectl get --raw "$path" >/dev/null 2>&1; then echo answers; else kubectl get --raw "$path" 2>&1 | head -1; fi
 done
-port=$(( 20000 + RANDOM % 20000 ))
-kubectl proxy --port="$port" >/dev/null 2>&1 &
+# Through kubectl proxy on a unix socket in a private directory: a TCP port
+# would hand the caller's credentials to anything that can reach it.
+proxy_dir="$(mktemp -d)"
+kubectl proxy --unix-socket="$proxy_dir/api.sock" >/dev/null 2>&1 &
 proxy=$!
-sleep 3
-printf '  /openapi/v2 as protobuf, the way Argo CD reads it: HTTP %s\n' "$(curl -s -o /dev/null -w '%{http_code}' \
-  -H 'Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf' "http://127.0.0.1:$port/openapi/v2" || true)"
+trap 'kill "$proxy" 2>/dev/null || true; rm -rf "$proxy_dir"' EXIT
+for _ in $(seq 1 20); do [ -S "$proxy_dir/api.sock" ] && break; kill -0 "$proxy" 2>/dev/null || break; sleep 0.5; done
+printf '  /openapi/v2 as protobuf, the way Argo CD reads it: HTTP %s\n' "$(curl -s --max-time 30 --unix-socket "$proxy_dir/api.sock" -o /dev/null -w '%{http_code}' \
+  -H 'Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf' http://localhost/openapi/v2 || true)"
 kill "$proxy" 2>/dev/null || true
+rm -rf "$proxy_dir"
+trap - EXIT
 kubectl get apiservices -o jsonpath='{range .items[?(@.spec.service)]}{.spec.group}/{.spec.version}{"\n"}{end}' 2>/dev/null |
   while read -r gv; do
     printf '  /apis/%s: ' "$gv"

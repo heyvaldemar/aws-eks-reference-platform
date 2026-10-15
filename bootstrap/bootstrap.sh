@@ -78,17 +78,26 @@ fi
 # v0.9.0-eksbuild.12) makes the API server answer that with 503 while JSON
 # still works. Ask the way Argo CD asks, and say so if it fails.
 say "the cluster's OpenAPI, read as Argo CD reads it"
-port=$(( 20000 + RANDOM % 20000 ))
-kubectl proxy --port="$port" >/dev/null 2>&1 &
+# kubectl get --raw cannot choose the format, so the request goes through
+# kubectl proxy: on a unix socket in a private directory, never a TCP port,
+# because the proxy is the caller's credentials for anyone who can reach it.
+proxy_dir="$(mktemp -d)"
+kubectl proxy --unix-socket="$proxy_dir/api.sock" >/dev/null 2>&1 &
 proxy=$!
+trap 'kill "$proxy" 2>/dev/null || true; rm -rf "$proxy_dir"' EXIT
 code=000
 for _ in $(seq 1 30); do
-  code="$(curl -s -o /dev/null -w '%{http_code}' \
-    -H 'Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf' "http://127.0.0.1:$port/openapi/v2" || true)"
-  [ "$code" = 200 ] && break
+  kill -0 "$proxy" 2>/dev/null || { echo "kubectl proxy exited; cannot ask for the OpenAPI document" >&2; exit 1; }
+  if [ -S "$proxy_dir/api.sock" ]; then
+    code="$(curl -s --max-time 30 --unix-socket "$proxy_dir/api.sock" -o /dev/null -w '%{http_code}' \
+      -H 'Accept: application/com.github.proto-openapi.spec.v2@v1.0+protobuf' http://localhost/openapi/v2 || true)"
+    [ "$code" = 200 ] && break
+  fi
   sleep 10
 done
 kill "$proxy" 2>/dev/null || true
+rm -rf "$proxy_dir"
+trap - EXIT
 if [ "$code" != 200 ]; then
   echo "/openapi/v2 as protobuf answers HTTP $code; Argo CD cannot build its cluster cache on this cluster." >&2
   echo "An aggregated API built with Go 1.27 does this (https://github.com/kubernetes-sigs/metrics-server/issues/1868):" >&2
