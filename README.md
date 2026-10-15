@@ -124,7 +124,7 @@ The Terraform in [`terraform/`](terraform/) creates a VPC over three zones, EKS 
 What the first seven runs found, none of which a mocked provider or kind could show, each fixed with a check that now catches it:
 
 - **GitHub's OIDC subject changed.** Repositories created after 15 July 2026 get `repo:owner@ID/name@ID`; trust policies written for `repo:owner/name` refuse every run (`subject_repository` in the bootstrap).
-- **A name past an AWS limit.** An EventBridge rule reached 73 characters once the cluster name carried a run ID; a test now checks every name at the longest cluster name allowed.
+- **A name past an AWS limit.** An EventBridge rule reached 74 characters once the cluster name carried a run ID; a test now checks every name at the longest cluster name allowed.
 - **Argo CD could not read the cluster.** EKS 1.37's default metrics-server add-on is built with Go 1.27, and the cluster's OpenAPI document then fails as protobuf, the format Argo CD reads ([metrics-server#1868](https://github.com/kubernetes-sigs/metrics-server/issues/1868)). The add-on is held on its last Go 1.26 build, and the bootstrap checks the document the way Argo CD reads it.
 - **Teardown order.** Deleting Argo CD's root Application removed the load balancer controller before the Gateway's Service, and a load balancer outlived the cluster. Teardown now stops Argo CD first and deletes from AWS's side, by the controllers' tags, whatever is left.
 

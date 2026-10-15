@@ -3,7 +3,9 @@ name: EKS validation run
 # ADR 10. Applies the EKS Terraform in the maintainer's own AWS account,
 # installs the platform from this commit, runs tests/eks/run.sh against it,
 # and destroys everything whatever happened, then looks for anything left and
-# reports what the run cost. About $1 to $3 a run.
+# reports what the run cost. The first passing run, on 2026-10-15, took 0.81 h
+# and cost about $0.20 by its own estimate; one that waits out its timeouts
+# has cost up to about $0.45.
 #
 # Weekly on a schedule, and by hand on main when the dispatch says SPEND. The
 # schedule does nothing until the repository variable AWS_VALIDATION_ENABLED
@@ -18,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type SPEND to create billed AWS resources (about $1 to $3 a run)"
+        description: "Type SPEND to create billed AWS resources (about $0.20 a passing run, up to about $0.50)"
         required: true
         type: string
 
