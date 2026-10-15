@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The bootstrap README now says that AWS Budgets e-mails only verified addresses since 30 September 2026: the alerts went nowhere for a day because the verification link from the apply had lapsed. How to send it again is in the same step.
 - The daily sweeper failed on the seventh run's state: the lock of a local `terraform destroy` stopped by hand was still in the bucket, and the state still listed a VPC removed by hand. The lock is gone and the state empty. The sweeper itself now cleans in the run's order (`aws-controller-cleanup.sh` before and after a targeted destroy of the cluster), so controller security groups no longer keep a VPC from being deleted.
 
 ## [1.2.0] - 2026-10-15
