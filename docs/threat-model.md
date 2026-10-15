@@ -2,7 +2,7 @@
 
 What this platform defends against, the control for each threat, and the check that proves the control holds. A control without a check is listed as a residual risk, not as a control.
 
-"Daily" means the kind e2e run (`tests/e2e/run.sh`); "every change" means the static checks and their planted violations (`scripts/validate.sh`, `tests/static/plants.tsv`) or the Terraform tests (`terraform/tests/`). The EKS rows are proven against a mocked plan: the Terraform has not been applied to a real account, and those rows say so.
+"Daily" means the kind e2e run (`tests/e2e/run.sh`); "every change" means the static checks and their planted violations (`scripts/validate.sh`, `tests/static/plants.tsv`) or the Terraform tests (`terraform/tests/`). The EKS rows are proven against a mocked plan on every change; the weekly run on AWS (`tests/eks/run.sh`, ADR 10) adds a real account for what it checks: admission, IMDSv2, the certificate issued by DNS-01 and served by the load balancer, Karpenter and Velero. A row with only the mocked plan behind it says so.
 
 ## What is protected, and from whom
 

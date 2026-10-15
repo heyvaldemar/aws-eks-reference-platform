@@ -1,6 +1,6 @@
 # Well-Architected review
 
-The platform read against the six pillars of the AWS Well-Architected Framework: what it does, the evidence that it does it, and what it does not do yet. The evidence column points at a check, not at a description; where the only evidence is a Terraform test on a mocked plan, the row says so, because the EKS path has not been applied to a real account.
+The platform read against the six pillars of the AWS Well-Architected Framework: what it does, the evidence that it does it, and what it does not do yet. The evidence column points at a check, not at a description; where the only evidence is a Terraform test on a mocked plan, the row says so. The weekly EKS run on a real account (`tests/eks/run.sh`, passing since 2026-10-15) is evidence only for what it checks.
 
 ## Operational excellence
 

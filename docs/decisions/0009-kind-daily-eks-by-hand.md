@@ -27,7 +27,7 @@ The repository's claims have to be true, and checkable by anyone. Running EKS on
 
 ## Revisited, 2026-10-14
 
-The EKS run is now weekly as well as by hand before a release ([ADR 10](0010-aws-validation-runs.md), "Weekly"). The daily proof stays on kind. The README will say the EKS path is validated weekly only once scheduled runs have passed, with their dates and commits.
+The EKS run is now weekly as well as by hand before a release ([ADR 10](0010-aws-validation-runs.md), "Weekly"). The daily proof stays on kind. The README will say the EKS path is validated weekly only once scheduled runs have passed, with their dates and commits. The first manual run passed on 2026-10-15 ([ADR 10](0010-aws-validation-runs.md), "Validated").
 
 ## How to explain this to a customer
 

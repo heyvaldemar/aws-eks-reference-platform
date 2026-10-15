@@ -11,7 +11,7 @@ The second row of badges is not typed by hand: it is the e2e workflow's last 30 
 
 A reference Kubernetes platform for Amazon EKS: Terraform for the cluster, Argo CD for everything on it, and a test suite that proves what the platform does instead of describing it. It is a reference architecture, not a product, and it does not run in production anywhere.
 
-The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is written and tested against a mocked AWS provider; it has not been applied to a real account yet, and this README will say so until it has.
+The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is tested against a mocked AWS provider on every change, and **applied to a real AWS account weekly**: the first run that passed, on 2026-10-15, brought every Application up on EKS 1.37, passed 14 checks against AWS and destroyed everything it made ([EKS](#eks)).
 
 ## What is proven, and how
 
@@ -119,7 +119,14 @@ Then break it on purpose: [docs/hands-on.md](docs/hands-on.md) has three exercis
 
 The Terraform in [`terraform/`](terraform/) creates a VPC over three zones, EKS 1.37 with access entries only and KMS-encrypted Secrets, a Graviton system node group with IMDSv2 and a metadata hop limit of one, the managed add-ons, Pod Identity roles for six controllers, Karpenter's node role and interruption queue, the Velero bucket and the Route 53 zone. `terraform test` checks those properties against a mocked provider on every change.
 
-**It has not been applied to a real AWS account yet.** The run that will apply it is built: an account bootstrap with a $30 kill-switch (`terraform/bootstrap-aws/`), a workflow that applies, installs, checks (`tests/eks/run.sh`), destroys and reports the cost, weekly and by hand, and a daily delete-only sweeper ([ADR 10](docs/decisions/0010-aws-validation-runs.md)). When a run has passed, this section will say when and on which commit.
+**Validated on AWS.** On 2026-10-15, [run 38695231460](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460) on commit [`7040995`](https://github.com/heyvaldemar/aws-eks-reference-platform/commit/7040995) applied the Terraform (101 resources), installed the platform from that commit, waited until all 19 Applications were Synced and Healthy, and passed every check in [`tests/eks/run.sh`](tests/eks/run.sh): the admission plants refused and the control admitted, both system nodes IMDSv2-only with a hop limit of one, the Gateway's Let's Encrypt (staging) certificate issued by DNS-01 in the delegated zone and served by the network load balancer, Karpenter's NodePool and EC2NodeClass ready, a Velero backup completed into its S3 bucket. Then it destroyed everything, searched the account for anything tagged with its run ID or its cluster, found nothing, and estimated its own cost at about $0.20 for 0.81 hours (list prices, before data transfer). It runs every Wednesday, in a member account that holds nothing else, under a $30 kill-switch, with a daily delete-only sweeper ([ADR 10](docs/decisions/0010-aws-validation-runs.md)).
+
+What the first seven runs found, none of which a mocked provider or kind could show, each fixed with a check that now catches it:
+
+- **GitHub's OIDC subject changed.** Repositories created after 15 July 2026 get `repo:owner@ID/name@ID`; trust policies written for `repo:owner/name` refuse every run (`subject_repository` in the bootstrap).
+- **A name past an AWS limit.** An EventBridge rule reached 73 characters once the cluster name carried a run ID; a test now checks every name at the longest cluster name allowed.
+- **Argo CD could not read the cluster.** EKS 1.37's default metrics-server add-on is built with Go 1.27, and the cluster's OpenAPI document then fails as protobuf, the format Argo CD reads ([metrics-server#1868](https://github.com/kubernetes-sigs/metrics-server/issues/1868)). The add-on is held on its last Go 1.26 build, and the bootstrap checks the document the way Argo CD reads it.
+- **Teardown order.** Deleting Argo CD's root Application removed the load balancer controller before the Gateway's Service, and a load balancer outlived the cluster. Teardown now stops Argo CD first and deletes from AWS's side, by the controllers' tags, whatever is left.
 
 The targets exist and refuse to run without an explicit `CONFIRM_SPEND=yes`:
 
@@ -148,7 +155,7 @@ Not in the table: Karpenter's nodes for workloads (Spot first), NAT and load bal
 
 ## Known limitations
 
-- **Proven on kind, not on AWS.** Every check above runs on a one-node kind cluster. The EKS Terraform is validated and tested against a mocked provider and has not been applied to an account, so nothing here is measured at production scale, across zones, or with real IAM, KMS and load balancers.
+- **Proven daily on kind, weekly on AWS, never at scale.** The full suite runs on a one-node kind cluster every day; the EKS run applies the real Terraform weekly with two system nodes and the demo tenants, so nothing here is measured at production scale or under load.
 - **One cluster, one region.** No multi-cluster fleet, no failover between regions; Argo CD and the platform add-ons run in the cluster they manage.
 - **No runtime detection and no encryption between pods.** Admission and network policy decide what starts and what talks; nothing watches what a running container does, and traffic inside the cluster is plain.
 - **No SSO.** Argo CD and Grafana are reached by port-forward with an admin password from the cluster.

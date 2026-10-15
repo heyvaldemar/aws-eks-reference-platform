@@ -48,7 +48,7 @@ The maintainer said yes on 2026-10-14. What exists, all of it checkable without 
 - `.github/workflows/eks-validation.yml`: guards 1 to 5, with the run's state and variables in the bucket and `tests/eks/run.sh` as the check. The cleanup of what controllers made runs from the job that created the cluster, whose address the API allows; if that job dies first, the teardown adds its own address and does the same. The environment is limited to `main` rather than to a reviewer, because the teardown runs in it and must not wait for a person.
 - `.github/workflows/eks-sweeper.yml`: guard 6, daily, with yesterday's bill in its summary, which is the day-later reconciliation of guard 5 until the run-id cost allocation tag is active.
 
-Not yet: the account. Until it exists and a run has passed, the README keeps saying that the EKS path has not been applied.
+The account came on 2026-10-14, the first passing run on 2026-10-15 (below).
 
 ## Weekly, 2026-10-14
 
@@ -58,6 +58,10 @@ The maintainer said yes to a weekly run on 2026-10-14. A run that passed once sa
 - **Budget.** Alerts at $10 and $20, the kill-switch at $30; they were $5, $10 and $15 for runs by hand. Four or five runs at the estimated $1 to $3 each come to $4 to $15 a month. The alerts say whether a month is ordinary, and the kill-switch stays a ceiling for mistakes, not a budget. The first runs replace the estimate with a measured number.
 - **The fleet allows exactly this.** Its conformance check accepts a scheduled apply only at most weekly and behind a repository variable; a daily one fails it.
 - **The account.** A member account in the maintainer's own AWS Organization that holds nothing else.
+
+## Validated, 2026-10-15
+
+The eighth run passed ([38695231460](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460), commit `7040995`): 101 resources applied, 19 Applications Synced and Healthy, every check in `tests/eks/run.sh` passed, everything destroyed, nothing left, about $0.20 by its own estimate. The seven before it found what no mocked plan could, and each finding is now a check: GitHub's immutable OIDC subject, an AWS name limit, a guardrail that denied reads, the Tagging API listing deleted resources, an anonymous registry limit, EKS 1.37's default metrics-server build breaking the OpenAPI document Argo CD reads, and a teardown that lost the load balancer controller before the load balancer. Seven failed runs cost about a dollar together; none left anything billing beyond the hour it took to clean the one that did.
 
 ## How to explain this to a customer
 

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-15
+
+The EKS path, applied to a real AWS account for the first time. Run [38695231460](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460) on `7040995` applied 101 resources, brought all 19 Applications to Synced and Healthy on EKS 1.37, passed every check in `tests/eks/run.sh`, destroyed everything, found nothing left and estimated its own cost at about $0.20. The seven runs before it failed on things only AWS could show, about $1.13 between them; each is a fix below with a check behind it. The run now repeats every Wednesday.
+
 ### Fixed
 
 - The seventh validation run brought 18 of the platform's 19 Applications to Synced and Healthy on EKS, then its teardown left a network load balancer, two controller security groups and two volumes behind, and they kept the VPC from being deleted (cleaned by hand within the hour; the residue search then found nothing). `eks-cleanup.sh` had deleted the root Application, which cascaded through the AWS Load Balancer Controller before the Gateway's Service was gone. It now stops Argo CD first, deletes Gateways (Envoy Gateway would put their Services back), the remaining LoadBalancer Services, Ingresses and Karpenter's NodePools and NodeClaims while their controllers run. `scripts/aws-controller-cleanup.sh` then deletes from AWS's side, by the controllers' tags, what is still there: load balancers and target groups before the cluster goes, instances, security groups and available volumes after it, before the network. The run's teardown and `make eks-down` destroy in that order. `diagnose.sh` now shows certificates, ACME orders and challenges and Gateways.
@@ -78,7 +82,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/releases/tag/v1.0.0
