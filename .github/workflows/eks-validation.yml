@@ -149,6 +149,12 @@ jobs:
           kubectl get nodes -o wide > evidence/nodes.txt 2>&1 || true
           kubectl get pods -A -o wide > evidence/pods.txt 2>&1 || true
           kubectl -n argocd get applications > evidence/applications.txt 2>&1 || true
+          # Why an Application is not Synced is in its conditions, and why
+          # Argo CD could not read or render something is in these two logs.
+          kubectl -n argocd get applications -o yaml > evidence/applications.yaml 2>&1 || true
+          kubectl -n argocd logs deployment/argocd-repo-server --tail=400 > evidence/argocd-repo-server.log 2>&1 || true
+          kubectl -n argocd logs statefulset/argocd-application-controller --tail=400 > evidence/argocd-application-controller.log 2>&1 || true
+          ./scripts/diagnose.sh > evidence/diagnose.txt 2>&1 || true
           terraform -chdir=terraform output -json > evidence/outputs.json 2>&1 || true
           cp run.tfvars.json evidence/
 
