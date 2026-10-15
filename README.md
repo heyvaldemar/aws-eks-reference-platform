@@ -208,7 +208,7 @@ cosign verify-blob aws-eks-reference-platform-<tag>.tar.gz \
 
 ## Next to it
 
-[kubernetes-ai-agent-sandbox](https://github.com/heyvaldemar/kubernetes-ai-agent-sandbox) narrows the same ideas to one question: what an AI agent that has been talked into something can reach. Agent pods run on gVisor, can call one tool and nothing else, and the API server refuses an agent workload that is not set up that way; a demo agent fooled on purpose proves it on every change.
+[kubernetes-ai-agent-sandbox](https://github.com/heyvaldemar/kubernetes-ai-agent-sandbox) narrows the same ideas to one question: what an AI agent that has been talked into something can reach. Agent pods run on gVisor, reach their tools only through an MCP server that knows which agent is calling and holds the credentials no agent pod may carry, and the API server refuses an agent workload that is not set up that way; a demo agent fooled on purpose proves it on every change.
 
 [kubernetes-supply-chain-admission](https://github.com/heyvaldemar/kubernetes-supply-chain-admission) closes the largest open risk in this platform's threat model. The cluster runs an image only if this repository's own build signed it and attached provenance, an SBOM and a scan from the last day. A native policy keeps images from anywhere else out while Kyverno is down.
 
