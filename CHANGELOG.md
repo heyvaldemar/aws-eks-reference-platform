@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- The daily sweeper failed on the seventh run's state: the lock of a local `terraform destroy` stopped by hand was still in the bucket, and the state still listed a VPC removed by hand. The lock is gone and the state empty. The sweeper itself now cleans in the run's order (`aws-controller-cleanup.sh` before and after a targeted destroy of the cluster), so controller security groups no longer keep a VPC from being deleted.
+
 ## [1.2.0] - 2026-10-15
 
 The EKS path, applied to a real AWS account for the first time. Run [38695231460](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460) on `7040995` applied 101 resources, brought all 19 Applications to Synced and Healthy on EKS 1.37, passed every check in `tests/eks/run.sh`, destroyed everything, found nothing left and estimated its own cost at about $0.20. The seven runs before it failed on things only AWS could show, about $1.09 between them by their own estimates; each is a fix below with a check behind it. The run now repeats every Wednesday.

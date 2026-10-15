@@ -3,9 +3,11 @@
 # what a validation run left behind for longer than MAX_AGE_HOURS (default 3).
 #
 # For each run whose state in the bucket still lists resources:
-#   1. what controllers made in AWS, found by the cluster's tags: instances
-#      terminated, load balancers deleted, unattached volumes deleted
-#   2. terraform destroy with the run's own variables
+#   1. what controllers made in AWS, found by the cluster's tags
+#      (aws-controller-cleanup.sh): load balancers and target groups
+#   2. terraform destroy with the run's own variables: the cluster first,
+#      then the controllers' instances, security groups and available
+#      volumes, then everything else
 #   3. the residue search
 # Env: TF_STATE_BUCKET, AWS_REGION. Needs aws, terraform and python3.
 set -uo pipefail
@@ -35,24 +37,11 @@ for key in $keys; do
   fi
   echo "run $run: $left resources left for $age_h h: sweeping"
 
-  # 1. What controllers made, by the cluster's tags.
-  ids="$(aws ec2 describe-instances \
-    --filters "Name=tag:kubernetes.io/cluster/$cluster,Values=owned" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
-    --query 'Reservations[].Instances[].InstanceId' --output text)"
-  if [ -n "$ids" ]; then
-    # shellcheck disable=SC2086  # instance ids, one word each
-    aws ec2 terminate-instances --instance-ids $ids >/dev/null && aws ec2 wait instance-terminated --instance-ids $ids
-  fi
-  for arn in $(aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerArn' --output text); do
-    if aws elbv2 describe-tags --resource-arns "$arn" \
-         --query "TagDescriptions[].Tags[?Key=='elbv2.k8s.aws/cluster' && Value=='$cluster'][]" --output text | grep -q .; then
-      aws elbv2 delete-load-balancer --load-balancer-arn "$arn"
-    fi
-  done
-  for vol in $(aws ec2 describe-volumes --filters "Name=tag:kubernetes.io/cluster/$cluster,Values=owned" "Name=status,Values=available" \
-                 --query 'Volumes[].VolumeId' --output text); do
-    aws ec2 delete-volume --volume-id "$vol"
-  done
+  # 1. What controllers made, by the cluster's tags: load balancers and
+  #    target groups now; their security groups, instances and volumes once
+  #    the cluster is gone (step 2), since the cluster's own security group
+  #    references them until then. The same script the run's teardown uses.
+  "$HERE/aws-controller-cleanup.sh" "$cluster" before || failed=1
 
   # 2. terraform destroy with the run's own variables. The API address only
   #    has to be valid; nothing reaches the API during a destroy.
@@ -62,6 +51,9 @@ for key in $keys; do
     if terraform -chdir="$HERE/../terraform" init -input=false -reconfigure -lockfile=readonly \
          -backend-config="bucket=$BUCKET" -backend-config="key=$key" \
          -backend-config="region=$AWS_REGION" -backend-config="use_lockfile=true" >/dev/null &&
+       terraform -chdir="$HERE/../terraform" destroy -input=false -auto-approve -target=aws_eks_cluster.this \
+         -var-file="$WORK/run.tfvars.json" -var 'cluster_endpoint_public_access_cidrs=["198.51.100.1/32"]' &&
+       { "$HERE/aws-controller-cleanup.sh" "$cluster" after || failed=1; } &&
        terraform -chdir="$HERE/../terraform" destroy -input=false -auto-approve -var-file="$WORK/run.tfvars.json" \
          -var 'cluster_endpoint_public_access_cidrs=["198.51.100.1/32"]'; then
       echo "run $run: destroyed"
