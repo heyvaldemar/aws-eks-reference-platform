@@ -77,13 +77,16 @@ locals {
       source      = ["aws.ec2"]
       detail-type = ["EC2 Instance State-change Notification"]
     }
-    capacity-reservation-interruption = {
+    capacity-interruption = {
       source      = ["aws.ec2"]
       detail-type = ["EC2 Capacity Reservation Instance Interruption Warning"]
     }
   }
 }
 
+# A rule's name is at most 64 characters: with the longest cluster name the
+# variable allows (32), a key here may have 21. tests/posture.tftest.hcl
+# checks every name against its limit with that cluster name.
 resource "aws_cloudwatch_event_rule" "karpenter" {
   for_each      = local.karpenter_events
   name          = "${var.cluster_name}-karpenter-${each.key}"

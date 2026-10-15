@@ -216,3 +216,13 @@ run "subject_names_another_repository" {
 
   expect_failures = [var.subject_repository]
 }
+
+# The workflow roles may read the bootstrap's own IAM and change none of it.
+run "bootstrap_is_read_only_to_runs" {
+  command = plan
+
+  assert {
+    condition     = one([for st in jsondecode(aws_iam_policy.guardrails.policy).Statement : st if st.Sid == "BootstrapIsNotTheirs"]).NotAction == ["iam:Get*", "iam:List*"]
+    error_message = "every IAM action but a read is denied on the bootstrap's own roles, policies and OIDC provider"
+  }
+}

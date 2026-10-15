@@ -291,3 +291,40 @@ run "permissions_boundary" {
     error_message = "every IAM role the configuration creates carries the permissions boundary"
   }
 }
+
+# A run names its cluster reference-platform-<run id>, and AWS limits names:
+# 64 characters for an IAM role or an EventBridge rule, 63 for a node group,
+# 80 for a queue. The first real run failed on a rule name of 73. Every named
+# resource is checked here with the longest cluster name the variable allows.
+run "names_fit_the_longest_cluster_name" {
+  command = plan
+
+  variables {
+    cluster_name = "reference-platform-9999999999999"
+  }
+
+  assert {
+    condition     = length(var.cluster_name) == 32
+    error_message = "the test uses the longest cluster name the variable allows"
+  }
+  assert {
+    condition     = alltrue([for r in aws_cloudwatch_event_rule.karpenter : length(r.name) <= 64])
+    error_message = "an EventBridge rule name is longer than 64 characters"
+  }
+  assert {
+    condition = alltrue([for n in concat(
+      [for r in aws_iam_role.controller : r.name],
+      [aws_iam_role.cluster.name, aws_iam_role.node.name, aws_iam_role.karpenter_node.name,
+      aws_iam_role.vpc_cni.name, aws_iam_role.ebs_csi.name, aws_iam_role.flow_logs.name],
+    ) : length(n) <= 64])
+    error_message = "an IAM role name is longer than 64 characters"
+  }
+  assert {
+    condition     = length(aws_eks_node_group.system.node_group_name) <= 63
+    error_message = "the node group name is longer than 63 characters"
+  }
+  assert {
+    condition     = length(aws_sqs_queue.karpenter_interruption.name) <= 80
+    error_message = "the interruption queue name is longer than 80 characters"
+  }
+}

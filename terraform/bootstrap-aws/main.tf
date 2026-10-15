@@ -78,10 +78,13 @@ locals {
       Resource = "*"
     },
     {
-      Sid      = "BootstrapIsNotTheirs"
-      Effect   = "Deny"
-      Action   = "iam:*"
-      Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn, local.guardrails_arn, local.boundary_arn])
+      Sid    = "BootstrapIsNotTheirs"
+      Effect = "Deny"
+      # Reading is allowed: the EKS Terraform resolves its own role's ARN
+      # (aws_iam_session_context calls iam:GetRole on it), and the policies
+      # are public in this repository anyway. Every change is denied.
+      NotAction = ["iam:Get*", "iam:List*"]
+      Resource  = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn, local.guardrails_arn, local.boundary_arn])
     },
     {
       Sid       = "EveryRoleCarriesTheBoundary"

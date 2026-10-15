@@ -24,3 +24,4 @@
 "karpenter.tf"	"sqs_managed_sse_enabled   = true"	"sqs_managed_sse_enabled   = false"	"interruption queue unencrypted"
 "variables.tf"	"can(cidrhost(c, 0)) && !endswith(c, \"/0\")"	"can(cidrhost(c, 0))"	"an API endpoint open to 0.0.0.0/0 accepted"
 "karpenter.tf"	"  name                 = \"${var.cluster_name}-karpenter-node\"\n  permissions_boundary = var.iam_permissions_boundary\n"	"  name                 = \"${var.cluster_name}-karpenter-node\"\n"	"a role created without the permissions boundary"
+"karpenter.tf"	"    capacity-interruption = {\n"	"    capacity-reservation-interruption = {\n"	"an EventBridge rule name that runs past 64 characters"

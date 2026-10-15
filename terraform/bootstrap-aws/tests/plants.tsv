@@ -3,7 +3,7 @@
 "main.tf"	"\"ec2:Delete*\", \"ec2:TerminateInstances\","	"\"ec2:Delete*\", \"ec2:CreateVpc\", \"ec2:TerminateInstances\","	"a delete-only role that can create"
 "main.tf"	"roles      = [aws_iam_role.create.name]"	"roles      = [aws_iam_role.sweep.name]"	"a kill-switch that stops the sweeper instead of the creation role"
 "main.tf"	"\"budgets:*\", \"ce:Create*\""	"\"ce:Create*\""	"a workflow role that may change the budgets"
-"main.tf"	"Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn, local.guardrails_arn, local.boundary_arn])"	"Resource = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn])"	"a workflow role that may rewrite its own guardrails or the boundary"
+"main.tf"	"Resource  = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn, local.guardrails_arn, local.boundary_arn])"	"Resource  = concat(local.protected_roles, [aws_iam_openid_connect_provider.github.arn, local.deny_all_arn])"	"a workflow role that may rewrite its own guardrails or the boundary"
 "main.tf"	"\"iam:PermissionsBoundary\" = local.boundary_arn"	"\"iam:PermissionsBoundary\" = \"arn:aws:iam::aws:policy/AdministratorAccess\""	"a role created without the boundary, a way around every deny"
 "main.tf"	"NotResource = [local.run_roles]"	"NotResource = [\"*\"]"	"a workflow role that may change or pass any role in the account"
 "main.tf"	"Statement = concat([{ Sid = \"Ceiling\", Effect = \"Allow\", Action = \"*\", Resource = \"*\" }], local.deny_statements)"	"Statement = [{ Sid = \"Ceiling\", Effect = \"Allow\", Action = \"*\", Resource = \"*\" }]"	"a boundary without the guardrails' denies"
@@ -11,3 +11,4 @@
 "variables.tf"	"var.kill_switch_usd > 0 && var.kill_switch_usd <= 50"	"var.kill_switch_usd > 0"	"a kill-switch with no ceiling"
 "main.tf"	"include_credit = false"	"include_credit = true"	"a budget that counts credits, so an account on credits never reaches a threshold"
 "variables.tf"	"replace(var.subject_repository, \"/@[0-9]+/\", \"\") == var.repository"	"true"	"a trust subject free to name another repository"
+"main.tf"	"NotAction = [\"iam:Get*\", \"iam:List*\"]"	"NotAction = [\"iam:Get*\", \"iam:List*\", \"iam:Update*\"]"	"a guardrail that lets a run update the bootstrap's own roles"
