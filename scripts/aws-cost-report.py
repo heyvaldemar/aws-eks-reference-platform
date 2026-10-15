@@ -119,6 +119,11 @@ def main():
     out += ["", f"**Total, before data transfer, logs and capacity units: about ${total:.2f}**"]
     text = "\n".join(out) + "\n"
     print(text)
+    # The status workflow turns these into the README's EKS badges.
+    if os.environ.get("E2E_RESULTS"):
+        with open(os.environ["E2E_RESULTS"], "w", encoding="utf-8") as f:
+            json.dump({"checks": [], "measured": [f"run cost: about ${total:.2f} ({hours:.2f} h, list prices)",
+                                                  f"run length: {hours:.2f} h"]}, f)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
             f.write(text)

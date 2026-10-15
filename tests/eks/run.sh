@@ -131,6 +131,20 @@ else
   fail "backup $backup ended ${phase:-without a phase}: $(kubectl -n velero get backup "$backup" -o jsonpath='{.status}' 2>&1 | head -c 300)"
 fi
 
+# A copy the status workflow reads (scripts/status.py), when one is asked for.
+if [ -n "${E2E_RESULTS:-}" ]; then
+  printf 'R\t%s\n' "${results[@]}" | python3 -c '
+import json, sys
+checks = []
+for line in sys.stdin:
+    kind, _, text = line.rstrip("\n").partition("\t")
+    if kind == "R" and text:
+        state, _, name = text.partition("  ")
+        checks.append({"state": state.strip(), "name": name.strip()})
+json.dump({"checks": checks, "measured": []}, sys.stdout)
+' >"$E2E_RESULTS"
+fi
+
 # --- summary -------------------------------------------------------------------
 printf '\n'
 printf '%s\n' "${results[@]}"

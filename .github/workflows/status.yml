@@ -8,7 +8,7 @@ name: Status
 # stays the code's and nothing here starts the e2e run again.
 on:
   workflow_run:
-    workflows: ["kind e2e"]
+    workflows: ["kind e2e", "EKS validation run"]
     types: [completed]
     branches: [main]
   schedule:
@@ -43,6 +43,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_WORKFLOW: kind-e2e.yml
         run: python3 scripts/status.py "$RUNNER_TEMP/status"
+
+      # The weekly run on AWS, in eks/: its checks, and its cost and length
+      # from the teardown's report. A day counts as green by its last run,
+      # and the run count beside it keeps the failed ones in view.
+      - name: Read the EKS runs on AWS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          E2E_WORKFLOW: eks-validation.yml
+          BADGE_LABEL: EKS on AWS
+        run: python3 scripts/status.py "$RUNNER_TEMP/status/eks"
 
       - name: Replace the branch `status`
         env:

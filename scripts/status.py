@@ -149,7 +149,8 @@ def main(out):
         msg = f"{len(green)} of {len(days)} days green, {status['runs_passed']} of {len(finished)} runs"
     else:
         color, msg = "lightgrey", "no runs yet"
-    json.dump(badge(f"e2e, last {WINDOW_DAYS} days", msg, color), open(os.path.join(out, "badge-days.json"), "w"))
+    label = os.environ.get("BADGE_LABEL", "e2e")
+    json.dump(badge(f"{label}, last {WINDOW_DAYS} days", msg, color), open(os.path.join(out, "badge-days.json"), "w"))
     if checks:
         color = "brightgreen" if not failed else "red"
         json.dump(badge("checks", f"{passed} of {passed + failed} passed, {latest['created_at'][:10]}", color),

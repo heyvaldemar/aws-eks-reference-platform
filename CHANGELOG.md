@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- The weekly EKS run on AWS has live badges too: green days and runs in the last 30 days, the latest run's checks, and its cost and length from the teardown's own report, written to `status/eks/` after every run. The first one reads "1 of 1 days green, 1 of 8 runs": the seven runs that failed on 15 October stay in view.
+
 ### Fixed
 
 - The bootstrap README now says that AWS Budgets e-mails only verified addresses since 30 September 2026: the alerts went nowhere for a day because the verification link from the apply had lapsed. How to send it again is in the same step.
