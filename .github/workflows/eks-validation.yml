@@ -5,10 +5,14 @@ name: EKS validation run
 # and destroys everything whatever happened, then looks for anything left and
 # reports what the run cost. About $1 to $3 a run.
 #
-# Manual only, on main, and only when the dispatch says SPEND. The account
-# stops spending on its own at $15 a month (terraform/bootstrap-aws), and a
-# daily sweeper with a delete-only role removes what a run left behind.
+# Weekly on a schedule, and by hand on main when the dispatch says SPEND. The
+# schedule does nothing until the repository variable AWS_VALIDATION_ENABLED
+# is true, and setting it to anything else stops it without a commit. The
+# account stops spending on its own at $30 a month (terraform/bootstrap-aws),
+# and a daily sweeper with a delete-only role removes what a run left behind.
 on:
+  schedule:
+    - cron: "17 1 * * 1"
   workflow_dispatch:
     inputs:
       confirm:
@@ -32,7 +36,7 @@ env:
 jobs:
   up:
     name: Apply, install, check
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'SPEND'
+    if: github.ref == 'refs/heads/main' && (inputs.confirm == 'SPEND' || (github.event_name == 'schedule' && vars.AWS_VALIDATION_ENABLED == 'true'))
     runs-on: ubuntu-latest
     environment: aws-validation
     timeout-minutes: 100
@@ -164,8 +168,8 @@ jobs:
   down:
     name: Destroy, look for residue, report the cost
     needs: up
-    # Whatever happened to the run, unless it was never dispatched for real.
-    if: always() && github.ref == 'refs/heads/main' && inputs.confirm == 'SPEND'
+    # Whatever happened to the run, unless it never started for real.
+    if: always() && github.ref == 'refs/heads/main' && (inputs.confirm == 'SPEND' || (github.event_name == 'schedule' && vars.AWS_VALIDATION_ENABLED == 'true'))
     runs-on: ubuntu-latest
     environment: aws-validation
     timeout-minutes: 60

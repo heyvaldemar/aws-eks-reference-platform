@@ -3,7 +3,7 @@ name: EKS sweeper
 # ADR 10, outside every run. Daily, with the delete-only role: destroy what a
 # validation run left behind for longer than three hours, look for residue,
 # and report yesterday's bill, which is when a run's cost reaches it. The
-# kill-switch at $15 does not stop this role, so cleaning goes on after
+# kill-switch at $30 does not stop this role, so cleaning goes on after
 # spending has stopped.
 #
 # Does nothing until the account exists: the repository variable

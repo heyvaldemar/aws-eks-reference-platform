@@ -25,6 +25,10 @@ The repository's claims have to be true, and checkable by anyone. Running EKS on
 - **EKS on a schedule.** The strongest proof, at a standing cost and with cloud credentials reachable from CI. Rejected for now; ADR 10 describes how it would be made safe if wanted.
 - **LocalStack for the AWS parts.** Emulates APIs, not EKS behaviour; it would add confidence in the wrong places.
 
+## Revisited, 2026-10-14
+
+The EKS run is now weekly as well as by hand before a release ([ADR 10](0010-aws-validation-runs.md), "Weekly"). The daily proof stays on kind. The README will say the EKS path is validated weekly only once scheduled runs have passed, with their dates and commits.
+
 ## How to explain this to a customer
 
 Everything you see claimed here is checked automatically every day on a real Kubernetes cluster, at no cloud cost, and the checks are designed so that each one has been seen to fail. The AWS-specific parts are checked for their security settings on every change, and run for real on AWS by hand before a release, under a strict spending limit. We say which is which, and we do not claim the second until it has happened.

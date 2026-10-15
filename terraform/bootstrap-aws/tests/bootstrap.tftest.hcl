@@ -144,16 +144,16 @@ run "budgets_and_kill_switch" {
   command = plan
 
   assert {
-    condition     = toset([for n in aws_budgets_budget.monthly.notification : n.threshold]) == toset([5, 10])
-    error_message = "the maintainer is e-mailed at $5 and $10 of actual monthly cost"
+    condition     = toset([for n in aws_budgets_budget.monthly.notification : n.threshold]) == toset([10, 20])
+    error_message = "the maintainer is e-mailed at $10 and $20 of actual monthly cost"
   }
   assert {
     condition     = aws_budgets_budget.monthly.cost_types[0].include_credit == false
     error_message = "the budget measures usage before credits, or an account on credits never reaches a threshold"
   }
   assert {
-    condition     = aws_budgets_budget_action.kill_switch.action_threshold[0].action_threshold_value == 15 && aws_budgets_budget_action.kill_switch.approval_model == "AUTOMATIC"
-    error_message = "at $15 the kill-switch fires without waiting for anyone"
+    condition     = aws_budgets_budget_action.kill_switch.action_threshold[0].action_threshold_value == 30 && aws_budgets_budget_action.kill_switch.approval_model == "AUTOMATIC"
+    error_message = "at $30 the kill-switch fires without waiting for anyone"
   }
   assert {
     condition     = aws_budgets_budget_action.kill_switch.definition[0].iam_action_definition[0].roles == toset(["platform-validation-create"])

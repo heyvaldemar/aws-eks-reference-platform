@@ -13,8 +13,8 @@ What ADR 10 asks of the AWS account before the first validation run, applied onc
 | Permissions boundary | every role a run creates must carry it, and it carries the guardrails' denies, so creating a role is not a way around them |
 | State bucket | versioned, encrypted, private, TLS only; one state file per run |
 | Validation zone | delegated once, kept between runs, so certificates issue for real |
-| Budget with alerts at $5 and $10 | e-mail to the maintainer |
-| Kill-switch at $15 | AWS Budgets attaches deny-all to the creation role; the sweeper keeps working |
+| Budget with alerts at $10 and $20 | e-mail to the maintainer |
+| Kill-switch at $30 | AWS Budgets attaches deny-all to the creation role; the sweeper keeps working |
 
 Standing cost: about $0.50 a month for the hosted zone and cents for the state bucket.
 
@@ -37,13 +37,15 @@ Standing cost: about $0.50 a month for the hosted zone and cents for the state b
    | `aws-validation` | `AWS_REGION`, `AWS_CREATE_ROLE_ARN`, `TF_STATE_BUCKET`, `VALIDATION_DOMAIN`, `VALIDATION_ZONE_ID`, `IAM_PERMISSIONS_BOUNDARY` |
    | `aws-sweeper` | `AWS_REGION`, `AWS_SWEEP_ROLE_ARN`, `TF_STATE_BUCKET` |
 
+6. Set the repository variable `AWS_VALIDATION_ENABLED` to `true`. The daily sweeper and the weekly run start; any other value stops both without a commit.
+
 ## What it does not stop
 
-The creation role is an administrator inside the boundary. A workflow that runs as it could create a role under the run's prefix, with the boundary, that trusts someone outside the account; the kill-switch would not reach that role, because AWS Budgets attaches its policy to named roles only. The protection there is who can run the workflow: a manual dispatch on `main`, by someone with write access to this repository. The sweeper deletes roles under the prefix that outlive their run.
+The creation role is an administrator inside the boundary. A workflow that runs as it could create a role under the run's prefix, with the boundary, that trusts someone outside the account; the kill-switch would not reach that role, because AWS Budgets attaches its policy to named roles only. The protection there is who can change what the workflow runs: it runs only from `main`, by a manual dispatch from someone with write access to this repository or by the weekly schedule, which runs `main` as it is. The sweeper deletes roles under the prefix that outlive their run.
 
 ## After the kill-switch fires
 
-Runs fail with AccessDenied from then on, which is the point. To re-enable them, the maintainer detaches `platform-validation-deny-all` from `platform-validation-create` himself, after reading why the month reached $15: no workflow role can do it.
+Runs fail with AccessDenied from then on, which is the point. To re-enable them, the maintainer detaches `platform-validation-deny-all` from `platform-validation-create` himself, after reading why the month reached $30: no workflow role can do it.
 
 ## Checks
 

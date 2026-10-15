@@ -53,15 +53,15 @@ variable "cluster_name_prefix" {
 }
 
 variable "alert_thresholds_usd" {
-  description = "Monthly actual cost at which the maintainer is e-mailed (ADR 10: $5 and $10)."
+  description = "Monthly actual cost at which the maintainer is e-mailed (ADR 10: $10 and $20)."
   type        = list(number)
-  default     = [5, 10]
+  default     = [10, 20]
 }
 
 variable "kill_switch_usd" {
-  description = "Monthly actual cost at which AWS Budgets attaches deny-all to the creation role (ADR 10: $15)."
+  description = "Monthly actual cost at which AWS Budgets attaches deny-all to the creation role (ADR 10: $30)."
   type        = number
-  default     = 15
+  default     = 30
 
   validation {
     condition     = var.kill_switch_usd > 0 && var.kill_switch_usd <= 50

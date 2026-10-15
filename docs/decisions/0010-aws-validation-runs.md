@@ -1,6 +1,6 @@
 # 10. AWS validation runs: guards and cost reporting
 
-- Status: accepted, design only (nothing in this ADR is built or enabled until the owner says so)
+- Status: accepted; built 2026-10-14; weekly runs approved 2026-10-14
 - Date: 2026-10-11
 
 ## Context
@@ -13,7 +13,7 @@ These are the conditions under which a run would be built and enabled. Each is r
 
 **Account.** A separate AWS account paid personally by the maintainer: standalone, or a member account in the maintainer's own AWS Organization, never in an employer's organization or linked to one. Nothing else runs in it. The workflow roles can create and delete what a run needs, and the sweeper deletes on a schedule; in an account that also holds other work, those rights would reach it. The budget measures usage before credits, so an account on promotional credits still reaches its thresholds.
 
-**Trigger.** `workflow_dispatch` only, before a release. Never a schedule, never a push.
+**Trigger.** `workflow_dispatch` only, before a release. Never a schedule, never a push. (Since 2026-10-14 also weekly; see the last section.)
 
 **Identity.** GitHub OIDC into two IAM roles, each trusted only for this repository and one GitHub environment:
 
@@ -31,12 +31,12 @@ These are the conditions under which a run would be built and enabled. Each is r
 **Outside every run.**
 
 6. A daily sweeper workflow, using the delete-only role, that destroys anything tagged with a `run-id` older than 3 hours and reports what it removed. It does not depend on the creation role, so the kill-switch below does not stop it.
-7. AWS Budgets on the account: e-mail alerts to the maintainer at $5 and $10 of monthly actual cost.
-8. A kill-switch at $15: a Budgets action that attaches a deny-all policy to the creation role. Runs after that fail instead of spending; the sweeper keeps cleaning.
+7. AWS Budgets on the account: e-mail alerts to the maintainer at $10 and $20 of monthly actual cost.
+8. A kill-switch at $30: a Budgets action that attaches a deny-all policy to the creation role. Runs after that fail instead of spending; the sweeper keeps cleaning.
 
 ## Consequences
 
-- The worst case is bounded twice: by the 3-hour sweeper for anything a run leaves behind, and by the $15 kill-switch for anything that keeps creating.
+- The worst case is bounded twice: by the 3-hour sweeper for anything a run leaves behind, and by the $30 kill-switch for anything that keeps creating.
 - Every run reports what it cost, so the README's estimate can be replaced by a measured number.
 - Building it needs the account, the two roles, the budgets and the two workflows.
 
@@ -50,6 +50,15 @@ The maintainer said yes on 2026-10-14. What exists, all of it checkable without 
 
 Not yet: the account. Until it exists and a run has passed, the README keeps saying that the EKS path has not been applied.
 
+## Weekly, 2026-10-14
+
+The maintainer said yes to a weekly run on 2026-10-14. A run that passed once says the EKS path worked on that day. Providers, add-ons and AWS itself move every week, and a run nobody repeats ages into a claim.
+
+- **Trigger.** Every Monday at 01:17 UTC, besides the manual dispatch. It runs only while the repository variable `AWS_VALIDATION_ENABLED` is `true`, which also gates the sweeper, so switching both off needs no commit. A push or a pull request still never starts a run.
+- **Budget.** Alerts at $10 and $20, the kill-switch at $30; they were $5, $10 and $15 for runs by hand. Four or five runs at the estimated $1 to $3 each come to $4 to $15 a month. The alerts say whether a month is ordinary, and the kill-switch stays a ceiling for mistakes, not a budget. The first runs replace the estimate with a measured number.
+- **The fleet allows exactly this.** Its conformance check accepts a scheduled apply only at most weekly and behind a repository variable; a daily one fails it.
+- **The account.** A member account in the maintainer's own AWS Organization that holds nothing else.
+
 ## How to explain this to a customer
 
-Real cloud tests run only when a person starts them, in an account that exists for nothing else, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.
+Real cloud tests run once a week and when a person starts them, in an account that exists for nothing else, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.
