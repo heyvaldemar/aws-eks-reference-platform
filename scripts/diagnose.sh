@@ -68,6 +68,20 @@ section "APIServices not Available"
 # sync with "the server is currently unable to handle the request".
 kubectl get apiservices -o jsonpath='{range .items[?(@.status.conditions[0].status!="True")]}{.metadata.name}{"  "}{.status.conditions[0].reason}{": "}{.status.conditions[0].message}{"\n"}{end}' 2>&1 || true
 
+section "The API server's OpenAPI, as Argo CD reads it"
+# Argo CD's cache sync starts with the cluster's OpenAPI; a 503 there is
+# "the server is currently unable to handle the request" in its conditions.
+kubectl version 2>&1 | sed 's/^/  /'
+for path in /openapi/v2 /openapi/v3; do
+  printf '  %s: ' "$path"
+  if out="$(kubectl get --raw "$path" 2>&1 | head -c 300)"; then echo "answers (${#out}+ bytes)"; else echo "$out"; fi
+done
+kubectl get apiservices -o jsonpath='{range .items[?(@.spec.service)]}{.spec.group}/{.spec.version}{"\n"}{end}' 2>/dev/null |
+  while read -r gv; do
+    printf '  /apis/%s: ' "$gv"
+    if kubectl get --raw "/apis/$gv" >/dev/null 2>&1; then echo answers; else kubectl get --raw "/apis/$gv" 2>&1 | head -1; fi
+  done
+
 section "Pods not Running or not Ready"
 kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" || $3 ~ /^0\//'
 
