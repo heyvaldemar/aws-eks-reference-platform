@@ -4,12 +4,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Pins moved to what upstream has released, which the freshness check reported on 15 October: charts argo-cd 10.10.5 and kube-prometheus-stack 92.8.0, with the images their defaults moved (Argo CD v3.5.5, Grafana 13.2.4-distroless, kube-webhook-certgen 1.11.0); helm v4.3.1, checked against helm's own checksum files; the Terraform and Go CI images, whose tags were pushed again upstream; the AWS provider 6.69.0 in both lock files, for the same four platforms.
+
 ### Added
 
 - The weekly EKS run on AWS has live badges too: green days and runs in the last 30 days, the latest run's checks, and its cost and length from the teardown's own report, written to `status/eks/` after every run. The first one reads "1 of 1 days green, 1 of 8 runs": the seven runs that failed on 15 October stay in view.
 
 ### Fixed
 
+- `scripts/check-freshness.py` no longer reports an image as behind when its chart defaults to `latest` (Kyverno's readiness checker): the pin is the only version there is.
+- Every `images.yaml` said `scripts/pin-images.py` moves its pins. No such script ever existed; the header now names `scripts/check-freshness.py`, which reports a pin a chart bump or a re-pushed tag has left behind.
 - The kind e2e no longer depends on ECR Public's patience with GitHub's shared runner addresses. Twice on 15 October the upgrade job waited out helm's ten minutes on `argocd-redis` behind "429 Too Many Requests" from public.ecr.aws, while the fresh install on another runner passed all 56 checks. `scripts/kind-prefetch.sh` now pulls every Docker Official Image the platform pins from ECR Public into each kind node from mirror.gcr.io, by the same digest, and names it as the platform does, so the kubelet finds it present and never asks ECR. Both jobs run it, the upgrade job for the previous release's pins as well as this commit's.
 - The bootstrap README now says that AWS Budgets e-mails only verified addresses since 30 September 2026: the alerts went nowhere for a day because the verification link from the apply had lapsed. How to send it again is in the same step.
 - The daily sweeper failed on the seventh run's state: the lock of a local `terraform destroy` stopped by hand was still in the bucket, and the state still listed a VPC removed by hand. The lock is gone and the state empty. The sweeper itself now cleans in the run's order (`aws-controller-cleanup.sh` before and after a targeted destroy of the cluster), so controller security groups no longer keep a VPC from being deleted.

@@ -12,8 +12,8 @@ kind v0.33.0 linux-amd64 https://github.com/kubernetes-sigs/kind/releases/downlo
 kind v0.33.0 darwin-arm64 https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-darwin-arm64 kind 0c8c7dbe5e23594a198b786c4bc13dacc101fa6196b0cb0b23a1ca44e61f4b4f
 kubectl v1.37.1 linux-amd64 https://dl.k8s.io/release/v1.37.1/bin/linux/amd64/kubectl kubectl 65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8
 kubectl v1.37.1 darwin-arm64 https://dl.k8s.io/release/v1.37.1/bin/darwin/arm64/kubectl kubectl fd65982c97ddad3106754b69ffa196d0e543aa591930ae52aed1adfb92f8c77f
-helm v4.3.0 linux-amd64 https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz linux-amd64/helm 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
-helm v4.3.0 darwin-arm64 https://get.helm.sh/helm-v4.3.0-darwin-arm64.tar.gz darwin-arm64/helm d3870437e1e95b67f8edbde964156c84a26503f560821d40c542441658934fba
+helm v4.3.1 linux-amd64 https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz linux-amd64/helm 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+helm v4.3.1 darwin-arm64 https://get.helm.sh/helm-v4.3.1-darwin-arm64.tar.gz darwin-arm64/helm 6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198
 kubeconform v0.8.0 linux-amd64 https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz kubeconform 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
 kubeconform v0.8.0 darwin-arm64 https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-arm64.tar.gz kubeconform f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67
 kube-linter v0.8.3 linux-amd64 https://github.com/stackrox/kube-linter/releases/download/v0.8.3/kube-linter-linux kube-linter 618d299a3e2839c8ca9d86fce0db617be0fba41f0fecbbbfb7fbf1c04299fae1

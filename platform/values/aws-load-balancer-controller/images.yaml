@@ -1,7 +1,7 @@
 # Every image this component runs, pinned by digest. A tag can be moved to
 # different bytes after it was reviewed; a digest cannot. scripts/check-images.py
-# fails CI on any rendered image without one, and scripts/pin-images.py is how
-# these lines are moved when the chart version changes.
+# fails CI on any rendered image without one, and scripts/check-freshness.py
+# names each pin a chart bump or a re-pushed tag has left behind.
 image:
   repository: public.ecr.aws/eks/aws-load-balancer-controller
   tag: v3.6.0@sha256:337a9bf9a99bbac372c8da20afad7b059e0bc89034f1087e325455b28c7fd488

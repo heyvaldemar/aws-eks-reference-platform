@@ -193,7 +193,11 @@ def check_chart_images():
                 if repo in pinned and pinned[repo] != tag:
                     # A pin newer than the chart's default is a deliberate patch
                     # (velero v1.18.4 over the chart's 1.18.2); only older is behind.
-                    if semver(pinned[repo]) and semver(tag) and semver(pinned[repo]) > semver(tag):
+                    # A chart that defaults to "latest" names no version to be
+                    # behind (kyverno's readiness-checker); the pin is the version.
+                    if tag == "latest":
+                        ok("chart image %s (%s)" % (repo, env), "pinned %s; the chart's default is latest" % pinned[repo])
+                    elif semver(pinned[repo]) and semver(tag) and semver(pinned[repo]) > semver(tag):
                         ok("chart image %s (%s)" % (repo, env), "pinned %s, newer than the chart's %s" % (pinned[repo], tag))
                     else:
                         behind("chart image %s (%s)" % (repo, env), "images.yaml pins %s, the chart now defaults to %s" % (pinned[repo], tag))

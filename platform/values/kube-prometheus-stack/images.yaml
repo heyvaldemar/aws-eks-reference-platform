@@ -1,7 +1,7 @@
 # Every image this component runs, pinned by digest. A tag can be moved to
 # different bytes after it was reviewed; a digest cannot. scripts/check-images.py
-# fails CI on any rendered image without one, and scripts/pin-images.py is how
-# these lines are moved when the chart version changes.
+# fails CI on any rendered image without one, and scripts/check-freshness.py
+# names each pin a chart bump or a re-pushed tag has left behind.
 crds:
   upgradeJob:
     image:
@@ -27,8 +27,8 @@ prometheusOperator:
       image:
         registry: ghcr.io
         repository: jkroepke/kube-webhook-certgen
-        tag: 1.8.9
-        sha: 58e4ac2e15bf7785eb00ac90d03f9be1ff3f2fe0add6c71b54af6e5c80031148
+        tag: 1.11.0
+        sha: 778d97dc3986355625e14392419b3364c487a7c807d4d86ddad1df369129b082
   # The operator passes this to Thanos sidecars it would create; none is
   # enabled, but the flag is rendered and an unpinned flag is an unpinned image.
   thanosImage:
@@ -54,8 +54,8 @@ grafana:
   image:
     registry: docker.io
     repository: grafana/grafana
-    tag: 13.2.3-distroless
-    sha: 202e5d5b3f8499e70ccac7991eea6d7da72d2790eb2e0597e7987acf724e7180
+    tag: 13.2.4-distroless
+    sha: ae3d3add290adbe6a88412229f5d76fd7bb82743050881698642d3d62f277e35
   sidecar:
     image:
       registry: quay.io

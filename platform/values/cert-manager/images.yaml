@@ -1,7 +1,7 @@
 # Every image this component runs, pinned by digest. A tag can be moved to
 # different bytes after it was reviewed; a digest cannot. scripts/check-images.py
-# fails CI on any rendered image without one, and scripts/pin-images.py is how
-# these lines are moved when the chart version changes.
+# fails CI on any rendered image without one, and scripts/check-freshness.py
+# names each pin a chart bump or a re-pushed tag has left behind.
 image:
   repository: quay.io/jetstack/cert-manager-controller
   digest: sha256:70f532fd9cfde0b09d55687200942399d89838bc2d5d5b45152eb799a15912b8
