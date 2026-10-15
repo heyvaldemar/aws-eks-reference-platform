@@ -78,6 +78,13 @@ jobs:
           role-duration-seconds: 7200
           aws-region: ${{ vars.AWS_REGION }}
 
+      # Charts from public.ecr.aws (Karpenter's) are pulled to render the
+      # expected Applications. Anonymously, a GitHub-hosted runner shares its
+      # address's data limit and the fourth run got 429 "Data limit
+      # exceeded"; logged in with the run's role, the pull is the account's.
+      - name: Log in to Amazon ECR Public
+        run: aws ecr-public get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin public.ecr.aws
+
       # The run's variables go to the state bucket beside its state, so the
       # teardown job and the sweeper destroy exactly what this job applied.
       - name: The run's variables

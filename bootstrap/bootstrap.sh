@@ -60,6 +60,19 @@ fi
 
 say() { printf '\n== %s\n' "$*"; }
 
+# --- 0. the API is whole --------------------------------------------------------
+# Argo CD reads the cluster's whole API when it starts, aggregated APIs
+# included. On a cluster minutes old, metrics.k8s.io can still be answering
+# 503, and Argo CD's controller then fails its first cache sync with "the
+# server is currently unable to handle the request" and leaves the root
+# Application Unknown. The first EKS validation runs found exactly that.
+say "every APIService Available"
+if ! kubectl wait --for=condition=Available apiservice --all --timeout=600s >/dev/null; then
+  echo "APIServices still not Available after 10 minutes:" >&2
+  kubectl get apiservices -o jsonpath='{range .items[?(@.status.conditions[0].status!="True")]}{.metadata.name}{"  "}{.status.conditions[0].reason}{": "}{.status.conditions[0].message}{"\n"}{end}' >&2
+  exit 1
+fi
+
 # --- 1. Argo CD ---------------------------------------------------------------
 ARGOCD_CHART_VERSION="$(sed -n 's/^ *targetRevision: \([0-9][0-9.]*\)$/\1/p' "$ROOT/platform/appsets/argo-cd.yaml" | head -1)"
 [ -n "$ARGOCD_CHART_VERSION" ] || { echo "could not read the argo-cd chart version" >&2; exit 1; }

@@ -63,6 +63,11 @@ for o in items:
 ' "$resource" "$name"
 done
 
+section "APIServices not Available"
+# One unavailable aggregated API is enough for Argo CD to fail every cache
+# sync with "the server is currently unable to handle the request".
+kubectl get apiservices -o jsonpath='{range .items[?(@.status.conditions[0].status!="True")]}{.metadata.name}{"  "}{.status.conditions[0].reason}{": "}{.status.conditions[0].message}{"\n"}{end}' 2>&1 || true
+
 section "Pods not Running or not Ready"
 kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" || $3 ~ /^0\//'
 
