@@ -56,11 +56,11 @@ run "trust" {
   command = plan
 
   assert {
-    condition     = jsondecode(aws_iam_role.create.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:heyvaldemar/aws-eks-reference-platform:environment:aws-validation"
+    condition     = jsondecode(aws_iam_role.create.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:heyvaldemar@10498744/aws-eks-reference-platform@1414733910:environment:aws-validation"
     error_message = "the creation role trusts this repository's aws-validation environment and nothing else"
   }
   assert {
-    condition     = jsondecode(aws_iam_role.sweep.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:heyvaldemar/aws-eks-reference-platform:environment:aws-sweeper"
+    condition     = jsondecode(aws_iam_role.sweep.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:heyvaldemar@10498744/aws-eks-reference-platform@1414733910:environment:aws-sweeper"
     error_message = "the delete-only role trusts this repository's aws-sweeper environment and nothing else"
   }
   assert {
@@ -190,4 +190,29 @@ run "kill_switch_is_a_ceiling" {
   }
 
   expect_failures = [var.kill_switch_usd]
+}
+
+# A repository from before the immutable subjects keeps owner/name.
+run "legacy_subject" {
+  command = plan
+
+  variables {
+    subject_repository = "heyvaldemar/aws-eks-reference-platform"
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role.create.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:heyvaldemar/aws-eks-reference-platform:environment:aws-validation"
+    error_message = "a legacy subject is matched as owner/name"
+  }
+}
+
+# A subject that names another repository than the one the roles describe.
+run "subject_names_another_repository" {
+  command = plan
+
+  variables {
+    subject_repository = "someone-else@123/aws-eks-reference-platform@456"
+  }
+
+  expect_failures = [var.subject_repository]
 }

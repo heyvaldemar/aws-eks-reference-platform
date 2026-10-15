@@ -45,7 +45,7 @@ locals {
         Condition = {
           StringEquals = {
             "${local.oidc_host}:aud" = "sts.amazonaws.com"
-            "${local.oidc_host}:sub" = "repo:${var.repository}:environment:${environment}"
+            "${local.oidc_host}:sub" = "repo:${var.subject_repository}:environment:${environment}"
           }
         }
       }]

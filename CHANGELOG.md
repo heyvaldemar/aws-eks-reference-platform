@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- `bootstrap-aws`: the roles trusted the OIDC subject `repo:owner/name:environment:...`, and the first real validation run was refused at the first AWS call. GitHub gives repositories created or renamed after 15 July 2026 an immutable subject, `repo:owner@OWNER_ID/name@REPO_ID:...`, so a name someone gives up and someone else takes cannot match. The new `subject_repository` variable holds that form, defaults to this repository's IDs, accepts the legacy form for older repositories, and must name the same repository as `repository`. Two tests and a planted violation; nothing had been created in the account.
+
 - `bootstrap-aws`: the budget counted credits, as AWS Budgets does by default, so in an account running on promotional credits the $5 and $10 alerts and the $15 kill switch would never fire, and a run left running would spend the credits instead. It now measures usage before credits (`cost_types.include_credit = false`), with a test and a planted violation. The sweeper's daily table leaves credits and refunds out for the same reason.
 
 ### Changed

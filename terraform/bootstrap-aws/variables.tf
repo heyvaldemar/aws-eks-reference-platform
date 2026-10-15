@@ -10,6 +10,33 @@ variable "repository" {
   default     = "heyvaldemar/aws-eks-reference-platform"
 }
 
+variable "subject_repository" {
+  description = <<-EOT
+    The repository as GitHub writes it into the OIDC token's subject, which is
+    what the roles' trust policies match. A repository created or renamed after
+    15 July 2026 gets the immutable form, owner@OWNER_ID/name@REPO_ID, so a
+    name given up and taken by someone else cannot match; an older one keeps
+    owner/name until it opts in. Read it with
+      gh api repos/OWNER/NAME/actions/oidc/customization/sub --jq .sub_claim_prefix
+    and drop the leading "repo:".
+  EOT
+  type        = string
+  default     = "heyvaldemar@10498744/aws-eks-reference-platform@1414733910"
+
+  validation {
+    condition = (
+      can(regex("^[A-Za-z0-9-]+@[0-9]+/[A-Za-z0-9._-]+@[0-9]+$", var.subject_repository)) ||
+      can(regex("^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$", var.subject_repository))
+    )
+    error_message = "subject_repository is owner@OWNER_ID/name@REPO_ID (immutable) or owner/name (legacy), as the token's subject carries it."
+  }
+
+  validation {
+    condition     = replace(var.subject_repository, "/@[0-9]+/", "") == var.repository
+    error_message = "subject_repository names a different repository than repository: the roles would trust a workflow the descriptions do not name."
+  }
+}
+
 variable "create_environment" {
   description = "The GitHub environment the creation role trusts. The validation workflow runs in it."
   type        = string

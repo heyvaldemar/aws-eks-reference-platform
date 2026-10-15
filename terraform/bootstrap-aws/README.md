@@ -28,6 +28,7 @@ Standing cost: about $0.50 a month for the hosted zone and cents for the state b
    terraform apply -var alert_email=<your address> -var validation_domain=eks-validation.<a domain you control>
    ```
 
+   For a repository other than this one, also pass `repository` and `subject_repository`: the repository as GitHub writes it into the OIDC token's subject, from `gh api repos/OWNER/NAME/actions/oidc/customization/sub --jq .sub_claim_prefix` without the leading `repo:`. A repository created or renamed after 15 July 2026 gets the immutable form, `owner@OWNER_ID/name@REPO_ID`, and a trust policy written for `owner/name` refuses every run.
 3. Delegate `validation_domain` once: create an NS record for it in the parent zone with the four `name_servers` from the output.
 4. Keep this directory's `terraform.tfstate` somewhere safe and private (it holds no credentials, but it is the only record of the bootstrap). It is local on purpose: this module creates the bucket every other state lives in.
 5. Put the outputs into the GitHub environments, as variables (none is a secret), and limit both environments to the `main` branch. Not a required reviewer: the teardown job runs in the same environment, and a teardown that waits for a person is how resources keep billing. The run itself asks for a typed confirmation when it is dispatched:
