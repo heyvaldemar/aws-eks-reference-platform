@@ -54,7 +54,7 @@ Not yet: the account. Until it exists and a run has passed, the README keeps say
 
 The maintainer said yes to a weekly run on 2026-10-14. A run that passed once says the EKS path worked on that day. Providers, add-ons and AWS itself move every week, and a run nobody repeats ages into a claim.
 
-- **Trigger.** Every Monday at 01:17 UTC, besides the manual dispatch. It runs only while the repository variable `AWS_VALIDATION_ENABLED` is `true`, which also gates the sweeper, so switching both off needs no commit. A push or a pull request still never starts a run.
+- **Trigger.** Every Wednesday at 01:17 UTC, besides the manual dispatch. Dependabot opens its weekly updates on Monday, so a run on Wednesday puts the week's new pins on AWS within two days; a run on Monday would have tested them six days late. It runs only while the repository variable `AWS_VALIDATION_ENABLED` is `true`, which also gates the sweeper, so switching both off needs no commit. A push or a pull request still never starts a run.
 - **Budget.** Alerts at $10 and $20, the kill-switch at $30; they were $5, $10 and $15 for runs by hand. Four or five runs at the estimated $1 to $3 each come to $4 to $15 a month. The alerts say whether a month is ordinary, and the kill-switch stays a ceiling for mistakes, not a budget. The first runs replace the estimate with a measured number.
 - **The fleet allows exactly this.** Its conformance check accepts a scheduled apply only at most weekly and behind a repository variable; a daily one fails it.
 - **The account.** A member account in the maintainer's own AWS Organization that holds nothing else.

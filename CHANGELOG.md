@@ -10,7 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- The EKS validation run is weekly as well as by hand (ADR 9 and ADR 10, revisited): every Monday, and only while the repository variable `AWS_VALIDATION_ENABLED` is `true`, so it stops without a commit. The bootstrap's alerts move to $10 and $20 and its kill-switch to $30, the ceiling for a month of weekly runs.
+- The EKS validation run is weekly as well as by hand (ADR 9 and ADR 10, revisited): every Wednesday, after Monday's Dependabot updates have merged, and only while the repository variable `AWS_VALIDATION_ENABLED` is `true`, so it stops without a commit. The bootstrap's alerts move to $10 and $20 and its kill-switch to $30, the ceiling for a month of weekly runs.
 - ADR 10 and the bootstrap README allow a member account in the maintainer's own AWS Organization, and say why an account that holds other work is the wrong place: the workflow roles can delete what they did not make.
 - The README points at [kubernetes-postgres-recovery](https://github.com/heyvaldemar/kubernetes-postgres-recovery), the database a tenant would run here, with the point-in-time recovery that Velero's volume snapshots cannot give it.
 
