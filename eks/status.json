@@ -1,0 +1,21 @@
+{
+  "repository": "heyvaldemar/aws-eks-reference-platform",
+  "workflow": "eks-validation.yml",
+  "written_at": "2026-10-17T11:41:04Z",
+  "window_days": 30,
+  "days_with_runs": 1,
+  "green_days": 1,
+  "streak_days": 1,
+  "runs": 8,
+  "runs_passed": 1,
+  "latest": {
+    "conclusion": "success",
+    "at": "2026-10-15T06:54:05Z",
+    "url": "https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460",
+    "commit": "7040995",
+    "checks_passed": 0,
+    "checks_failed": 0,
+    "checks": [],
+    "measured": []
+  }
+}
