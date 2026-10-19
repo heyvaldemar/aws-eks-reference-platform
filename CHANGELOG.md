@@ -6,10 +6,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- metrics-server moves from v0.9.0-eksbuild.11 to v0.9.0-eksbuild.13. eksbuild.12, the default for Kubernetes 1.37, broke the cluster's OpenAPI for protobuf clients and with it Argo CD's cache; eksbuild.11 held the platform on the last Go 1.26 build. eksbuild.13 is Go 1.27 built with the jsonv2 experiment off, the fix AWS reported on kubernetes-sigs/metrics-server#1868. Bootstrap still reads `/openapi/v2` as protobuf on every run, so a build that brings the 503 back fails there.
 - Pins moved to what upstream has released, which the freshness check reported on 15 October: charts argo-cd 10.10.5 and kube-prometheus-stack 92.8.0, with the images their defaults moved (Argo CD v3.5.5, Grafana 13.2.4-distroless, kube-webhook-certgen 1.11.0); helm v4.3.1, checked against helm's own checksum files; the Terraform and Go CI images, whose tags were pushed again upstream; the AWS provider 6.69.0 in both lock files, for the same four platforms.
 
 ### Added
 
+- The weekly EKS run checks, before it creates anything, that every add-on build the commit pins is one EKS offers for the cluster's Kubernetes version. A pin that does not exist fails the run in seconds instead of after a VPC and a control plane have been paid for.
 - The weekly EKS run on AWS has live badges too: green days and runs in the last 30 days, the latest run's checks, and its cost and length from the teardown's own report, written to `status/eks/` after every run. The first one reads "1 of 1 days green, 1 of 8 runs": the seven runs that failed on 15 October stay in view.
 
 ### Fixed

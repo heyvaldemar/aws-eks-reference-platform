@@ -121,6 +121,31 @@ jobs:
             -backend-config="bucket=$BUCKET" -backend-config="key=runs/$RUN_ID.tfstate" \
             -backend-config="region=$REGION" -backend-config="use_lockfile=true"
 
+      # Before anything is created: every add-on build this commit pins must be
+      # one EKS offers for the cluster's Kubernetes version. Otherwise the run
+      # builds a VPC and a control plane only to fail on the add-on, and pays
+      # for both.
+      - name: The pinned add-on builds exist for this Kubernetes version
+        env:
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          kv="$(sed -n '/variable "kubernetes_version"/,/^}/s/.*default *= *"\([^"]*\)".*/\1/p' terraform/variables.tf)"
+          [ -n "$kv" ] || { echo "::error::no default kubernetes_version in terraform/variables.tf"; exit 1; }
+          pins="$(sed -nE 's/^[[:space:]]+([a-z0-9-]+)[[:space:]]+= \{.*version = "(v[^"]+)".*/\1 \2/p' terraform/addons.tf)"
+          [ -n "$pins" ] || { echo "::error::no pinned add-on version found in terraform/addons.tf"; exit 1; }
+          status=0
+          while read -r addon version; do
+            offered="$(aws eks describe-addon-versions --region "$REGION" --kubernetes-version "$kv" --addon-name "$addon" \
+              --query 'addons[0].addonVersions[].addonVersion' --output text | tr '\t' '\n')"
+            if grep -qxF "$version" <<<"$offered"; then
+              echo "$addon $version is offered for Kubernetes $kv"
+            else
+              echo "::error::$addon $version is not offered for Kubernetes $kv; offered: $(tr '\n' ' ' <<<"$offered")"
+              status=1
+            fi
+          done <<<"$pins"
+          exit "$status"
+
       - name: Apply
         id: apply
         run: terraform -chdir=terraform apply -input=false -auto-approve -var-file="$PWD/run.tfvars.json"
