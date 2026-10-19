@@ -152,8 +152,20 @@ jobs:
       - name: Each check, shown the violation it exists for
         run: python3 tests/static/plant_violations.py
 
-      - name: Upload what was rendered
+      # Some charts generate a private key when they render (the AWS Load
+      # Balancer Controller's and External Secrets' webhook certificates).
+      # Never deployed, since Argo CD renders the charts itself, and never
+      # uploaded either: every Secret's values are blanked first, and the
+      # blanking is shown a planted key before it runs.
+      - name: Blank the Secrets in what was rendered
+        id: redact
         if: always()
+        run: |
+          python3 scripts/redact-secrets.py selftest
+          python3 scripts/redact-secrets.py out/
+
+      - name: Upload what was rendered
+        if: always() && steps.redact.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rendered-manifests

@@ -36,7 +36,7 @@ make wait
 ## Kubernetes
 
 1. Read the [EKS release notes](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html) for the target minor, and check every add-on and chart supports it.
-2. Change the version in four places together: `KUBE_VERSION` in `scripts/validate.sh`, the node image in `kind/cluster.yaml` (from the kind release notes, with its digest), `kubectl` in `tools.lock`, and `kubernetes_version` in `terraform/variables.tf`.
+2. Change the version in six places together: `KUBE_VERSION` in `scripts/validate.sh` and in `scripts/render.py`, the node image in `kind/cluster.yaml` (from the kind release notes, with its digest), `kubectl` in `tools.lock`, `kubernetes_version` in `terraform/variables.tf`, and the cluster version the posture test asserts in `terraform/tests/posture.tftest.hcl`.
 3. `make check`: kubeconform validates against the new version's schemas and pluto reports APIs it removed.
 4. kind e2e proves the platform on the new version. For EKS, the control plane moves one minor at a time (`terraform apply` with the next minor), then the managed node group, then Karpenter's nodes roll on their own as `expireAfter` and drift replace them.
 

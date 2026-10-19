@@ -10,11 +10,11 @@
 [![EKS checks](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fheyvaldemar%2Faws-eks-reference-platform%2Fstatus%2Feks%2Fbadge-checks.json)](https://github.com/heyvaldemar/aws-eks-reference-platform/blob/status/eks/status.json)
 [![EKS run cost](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fheyvaldemar%2Faws-eks-reference-platform%2Fstatus%2Feks%2Fbadge-run-cost.json)](https://github.com/heyvaldemar/aws-eks-reference-platform/blob/status/eks/status.json)
 
-The second row of badges is not typed by hand: it is the last 30 days of the kind e2e workflow on main and of the weekly EKS run on AWS (its checks, and its cost from the teardown's own report), rewritten after every run by [`.github/workflows/status.yml`](.github/workflows/status.yml) into the [`status`](https://github.com/heyvaldemar/aws-eks-reference-platform/tree/status) branch. A day counts as green by its last run; the run count beside it keeps the failed ones in view.
+The second row of badges is not typed by hand: it is the last 30 days of the kind e2e workflow on main and of the EKS run on AWS (its checks, and its cost from the teardown's own report), rewritten after every run by [`.github/workflows/status.yml`](.github/workflows/status.yml) into the [`status`](https://github.com/heyvaldemar/aws-eks-reference-platform/tree/status) branch. A day counts as green by its last run; the run count beside it keeps the failed ones in view.
 
 A reference Kubernetes platform for Amazon EKS: Terraform for the cluster, Argo CD for everything on it, and a test suite that proves what the platform does instead of describing it. It is a reference architecture, not a product, and it does not run in production anywhere.
 
-The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is tested against a mocked AWS provider on every change, and **applied to a real AWS account weekly**: the first run that passed, on 2026-10-15, brought every Application up on EKS 1.37, passed 14 checks against AWS and destroyed everything it made ([EKS](#eks)).
+The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is tested against a mocked AWS provider on every change, and **applied to a real AWS account**: the first run that passed, by hand on 2026-10-15, brought every Application up on EKS 1.37, passed 14 checks against AWS and destroyed everything it made ([EKS](#eks)). The same run is scheduled weekly from 2026-10-21; this page says weekly once scheduled runs have passed ([ADR 9](docs/decisions/0009-kind-daily-eks-by-hand.md)).
 
 ## What is proven, and how
 
@@ -34,7 +34,7 @@ Every line below is a check that fails the build when the claim stops being true
 | The demo's SLO pages when it should | burn-rate rules unit-tested with promtool (a burn pages, a normal error rate does not), then the frontend is made to fail in the cluster and the page must fire | every change, daily |
 | A deleted namespace comes back with its data | Velero backup, `kubectl delete namespace`, restore, then a marker written before the backup is read back | daily |
 | An upgrade from the previous release keeps data | previous release installed, marker written, cluster moved to the new commit, marker read | every change, from the first release after v1.0.0 |
-| The EKS Terraform keeps its security posture | `terraform test` on a mocked plan; 24 planted violations, each must fail it | every change |
+| The EKS Terraform keeps its security posture | `terraform test` on a mocked plan; 27 planted violations, each must fail it | every change |
 | Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 25 planted violations across all static checks | every change |
 | No pin silently falls behind | every chart, image, tool and provider compared with upstream | weekly |
 | The hands-on guide works as written | its three break-and-fix exercises run with every symptom, diagnosis and fix checked | weekly, and on any change to the guide |
@@ -158,7 +158,7 @@ Not in the table: Karpenter's nodes for workloads (Spot first), NAT and load bal
 
 ## Known limitations
 
-- **Proven daily on kind, weekly on AWS, never at scale.** The full suite runs on a one-node kind cluster every day; the EKS run applies the real Terraform weekly with two system nodes and the demo tenants, so nothing here is measured at production scale or under load.
+- **Proven daily on kind, on AWS by hand, never at scale.** The full suite runs on a one-node kind cluster every day; the EKS run, by hand so far and scheduled weekly from 2026-10-21, applies the real Terraform with two system nodes and the demo tenants, so nothing here is measured at production scale or under load.
 - **One cluster, one region.** No multi-cluster fleet, no failover between regions; Argo CD and the platform add-ons run in the cluster they manage.
 - **No runtime detection and no encryption between pods.** Admission and network policy decide what starts and what talks; nothing watches what a running container does, and traffic inside the cluster is plain.
 - **No SSO.** Argo CD and Grafana are reached by port-forward with an admin password from the cluster.
@@ -220,7 +220,7 @@ Open an [issue](https://github.com/heyvaldemar/aws-eks-reference-platform/issues
 
 ## How this is built
 
-One maintainer and an AI agent. The agent writes most of the code; the decisions are mine, and so is the verification. Nothing merges on the agent's report that it works: it merges on the checks above, and each of those has been shown the failure it exists to catch. Two of the platform's design choices came from checks failing during the build: a Velero restore that reported Completed with an empty volume, and Kyverno policies that let everything through while Kyverno was down.
+One maintainer and an AI agent. The agent writes most of the code; the decisions are mine, and so is the verification. Nothing merges on the agent's report that it works: it merges on the checks above, and each of those has been shown the failure it exists to catch. The rules the agent works under are in [AGENTS.md](AGENTS.md). Two of the platform's design choices came from checks failing during the build: a Velero restore that reported Completed with an empty volume, and Kyverno policies that let everything through while Kyverno was down.
 
 ## License
 

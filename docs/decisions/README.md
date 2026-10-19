@@ -13,7 +13,7 @@ Each record states the context, the decision, what it costs, what was considered
 | 7 | [Velero file-system backup on kind and on EKS](0007-velero-file-system-backup.md) | accepted |
 | 8 | [Traces become span metrics; no tracing backend yet](0008-traces-as-span-metrics.md) | accepted |
 | 9 | [kind is the daily proof; EKS is validated by hand before releases](0009-kind-daily-eks-by-hand.md) | accepted |
-| 10 | [AWS validation runs: guards and cost reporting](0010-aws-validation-runs.md) | accepted, design only |
+| 10 | [AWS validation runs: guards and cost reporting](0010-aws-validation-runs.md) | accepted; built and run on AWS 2026-10-15; weekly runs scheduled |
 | 11 | [Cost defaults: one NAT gateway, Graviton, standard support only](0011-cost-defaults.md) | accepted |
 | 12 | [Tenants: one directory each, one project each](0012-tenants-one-directory-each.md) | accepted |
 | 13 | [Service level objectives that are proven to page](0013-slos-proven-to-page.md) | accepted |
