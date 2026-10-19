@@ -42,6 +42,12 @@ jobs:
       - name: Create the kind cluster
         run: kind create cluster --config kind/cluster.yaml --wait 120s
 
+      - name: Fetch the Docker Official Images from Google's mirror
+        # ECR Public throttles anonymous pulls by runner address; see the
+        # script. The scheduled run of 2026-10-18 failed on argocd-redis
+        # without this step, which the kind e2e has had since 2026-10-15.
+        run: ./scripts/kind-prefetch.sh reference-platform .
+
       - name: Bootstrap Argo CD at this commit
         env:
           PLATFORM_REPO_URL: https://github.com/${{ github.repository }}

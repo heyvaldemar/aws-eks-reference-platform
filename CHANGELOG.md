@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The hands-on guide's weekly run prefetches the Docker Official Images from mirror.gcr.io, as the kind e2e does: its scheduled run of 2026-10-18 failed on argocd-redis behind ECR Public's throttling of shared runners.
 - Verification's `rendered-manifests` artifact no longer carries private keys. Two charts generate one when they render (the AWS Load Balancer Controller's and External Secrets' webhook certificates; never deployed, since Argo CD renders the charts itself). `scripts/redact-secrets.py` blanks every Secret's values before the upload, after a self-test with a planted key, and the upload is skipped if it fails.
 - The README said the EKS run is weekly before any scheduled run had happened, which its own ADR 9 forbids: it now says by hand on 2026-10-15, scheduled weekly from 2026-10-21. The Terraform posture test's plant count was 24 in the README and 27 in its file. The upgrade runbook named four places that hold the Kubernetes version; there are six. The decision index still called ADR 10 design only.
 - The status workflow hands its push credential to git through git's environment, not its command line, which any process on the runner can read.
