@@ -27,7 +27,7 @@ The repository's claims have to be true, and checkable by anyone. Running EKS on
 
 ## Revisited, 2026-10-14
 
-The EKS run is now weekly as well as by hand before a release ([ADR 10](0010-aws-validation-runs.md), "Weekly"). The daily proof stays on kind. The README will say the EKS path is validated weekly only once scheduled runs have passed, with their dates and commits. The first manual run passed on 2026-10-15 ([ADR 10](0010-aws-validation-runs.md), "Validated").
+The EKS run is now weekly as well as by hand before a release ([ADR 10](0010-aws-validation-runs.md), "Weekly"). The daily proof stays on kind. The README will say the EKS path is validated weekly only once scheduled runs have passed, with their dates and commits. The first manual run passed on 2026-10-15 ([ADR 10](0010-aws-validation-runs.md), "Validated"). The first scheduled run passed on 2026-10-21, [run 39552880368](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/39552880368) on `aef3ae3`: 14 of 14 checks, about $0.14, its pre-apply step finding metrics-server v0.9.0-eksbuild.13 offered for Kubernetes 1.37. From that run on, the README says weekly.
 
 ## How to explain this to a customer
 

@@ -14,7 +14,7 @@ The second row of badges is not typed by hand: it is the last 30 days of the kin
 
 A reference Kubernetes platform for Amazon EKS: Terraform for the cluster, Argo CD for everything on it, and a test suite that proves what the platform does instead of describing it. It is a reference architecture, not a product, and it does not run in production anywhere.
 
-The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is tested against a mocked AWS provider on every change, and **applied to a real AWS account**: the first run that passed, by hand on 2026-10-15, brought every Application up on EKS 1.37, passed 14 checks against AWS and destroyed everything it made ([EKS](#eks)). The same run is scheduled weekly from 2026-10-21; this page says weekly once scheduled runs have passed ([ADR 9](docs/decisions/0009-kind-daily-eks-by-hand.md)).
+The whole platform is **tested daily on kind**, on a GitHub runner, at no cloud cost. The EKS path is tested against a mocked AWS provider on every change, and **applied to a real AWS account**: the first run that passed, by hand on 2026-10-15, brought every Application up on EKS 1.37, passed 14 checks against AWS and destroyed everything it made ([EKS](#eks)). It now runs **weekly on AWS**: the first scheduled run, on 2026-10-21 ([run 39552880368](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/39552880368), commit [`aef3ae3`](https://github.com/heyvaldemar/aws-eks-reference-platform/commit/aef3ae3)), applied the same Terraform, passed 14 of 14 checks against AWS and cost about $0.14 by the teardown's own report ([ADR 9](docs/decisions/0009-kind-daily-eks-by-hand.md)).
 
 ## What is proven, and how
 
@@ -158,7 +158,7 @@ Not in the table: Karpenter's nodes for workloads (Spot first), NAT and load bal
 
 ## Known limitations
 
-- **Proven daily on kind, on AWS by hand, never at scale.** The full suite runs on a one-node kind cluster every day; the EKS run, by hand so far and scheduled weekly from 2026-10-21, applies the real Terraform with two system nodes and the demo tenants, so nothing here is measured at production scale or under load.
+- **Proven daily on kind, on AWS by hand, never at scale.** The full suite runs on a one-node kind cluster every day; the EKS run, weekly since 2026-10-21 and by hand before a release, applies the real Terraform with two system nodes and the demo tenants, so nothing here is measured at production scale or under load.
 - **One cluster, one region.** No multi-cluster fleet, no failover between regions; Argo CD and the platform add-ons run in the cluster they manage.
 - **No runtime detection and no encryption between pods.** Admission and network policy decide what starts and what talks; nothing watches what a running container does, and traffic inside the cluster is plain.
 - **No SSO.** Argo CD and Grafana are reached by port-forward with an admin password from the cluster.
