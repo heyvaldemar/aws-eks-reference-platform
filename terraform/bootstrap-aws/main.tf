@@ -32,8 +32,9 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# Trusted for one repository and one GitHub environment each: a workflow on
-# another branch, a fork, or a job without that environment cannot assume it.
+# Trusted for one GitHub environment each, in this repository (and, for the
+# creation role, the repositories in also_create): a workflow on another
+# branch, a fork, or a job without that environment cannot assume it.
 locals {
   trust = {
     for role, environment in { create = var.create_environment, sweep = var.sweeper_environment } : role => jsonencode({
@@ -45,7 +46,10 @@ locals {
         Condition = {
           StringEquals = {
             "${local.oidc_host}:aud" = "sts.amazonaws.com"
-            "${local.oidc_host}:sub" = "repo:${var.subject_repository}:environment:${environment}"
+            "${local.oidc_host}:sub" = [
+              for s in concat([var.subject_repository], role == "create" ? values(var.also_create) : []) :
+              "repo:${s}:environment:${environment}"
+            ]
           }
         }
       }]
@@ -163,7 +167,7 @@ resource "aws_iam_policy" "boundary" {
 
 resource "aws_iam_role" "create" {
   name                 = "platform-validation-create"
-  description          = "Assumed by ${var.repository}'s validation workflow in the ${var.create_environment} environment only."
+  description          = "Assumed by the validation workflow of ${join(", ", concat([var.repository], keys(var.also_create)))} in the ${var.create_environment} environment only."
   assume_role_policy   = local.trust["create"]
   max_session_duration = 7200
 }

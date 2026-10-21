@@ -1,5 +1,5 @@
 # file	old	new	what the test must notice (each field JSON-encoded)
-"main.tf"	"\"${local.oidc_host}:sub\" = \"repo:${var.subject_repository}:environment:${environment}\""	"\"${local.oidc_host}:sub\" = \"repo:${var.subject_repository}:*\""	"a role trusted by every workflow of the repository, not one environment"
+"main.tf"	"\"repo:${s}:environment:${environment}\""	"\"repo:${s}:*\""	"a role trusted by every workflow of a repository, not one environment"
 "main.tf"	"\"ec2:Delete*\", \"ec2:TerminateInstances\","	"\"ec2:Delete*\", \"ec2:CreateVpc\", \"ec2:TerminateInstances\","	"a delete-only role that can create"
 "main.tf"	"roles      = [aws_iam_role.create.name]"	"roles      = [aws_iam_role.sweep.name]"	"a kill-switch that stops the sweeper instead of the creation role"
 "main.tf"	"\"budgets:*\", \"ce:Create*\""	"\"ce:Create*\""	"a workflow role that may change the budgets"
@@ -12,3 +12,4 @@
 "main.tf"	"include_credit = false"	"include_credit = true"	"a budget that counts credits, so an account on credits never reaches a threshold"
 "variables.tf"	"replace(var.subject_repository, \"/@[0-9]+/\", \"\") == var.repository"	"true"	"a trust subject free to name another repository"
 "main.tf"	"NotAction = [\"iam:Get*\", \"iam:List*\"]"	"NotAction = [\"iam:Get*\", \"iam:List*\", \"iam:Update*\"]"	"a guardrail that lets a run update the bootstrap's own roles"
+"main.tf"	"role == \"create\" ? values(var.also_create) : []"	"values(var.also_create)"	"a delete-only role another repository may assume too"

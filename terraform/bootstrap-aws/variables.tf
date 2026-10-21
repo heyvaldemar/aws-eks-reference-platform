@@ -37,6 +37,29 @@ variable "subject_repository" {
   }
 }
 
+variable "also_create" {
+  description = <<-EOT
+    Other repositories whose validation workflow may assume the creation role,
+    in the same environment, as owner/name => the subject GitHub writes into
+    their tokens (see subject_repository; immutable form only). Each runs a
+    disposable validation in this account under the same guardrails,
+    permissions boundary, budget and kill-switch, and can do nothing this
+    repository's own run cannot. The delete-only role stays this repository's.
+  EOT
+  type        = map(string)
+  default = {
+    "heyvaldemar/kubernetes-air-gapped-ai-agent" = "heyvaldemar@10498744/kubernetes-air-gapped-ai-agent@1421238353"
+  }
+
+  validation {
+    condition = alltrue([
+      for name, subject in var.also_create :
+      can(regex("^[A-Za-z0-9-]+@[0-9]+/[A-Za-z0-9._-]+@[0-9]+$", subject)) && replace(subject, "/@[0-9]+/", "") == name
+    ])
+    error_message = "each also_create entry is owner/name => owner@OWNER_ID/name@REPO_ID for that same repository."
+  }
+}
+
 variable "create_environment" {
   description = "The GitHub environment the creation role trusts. The validation workflow runs in it."
   type        = string

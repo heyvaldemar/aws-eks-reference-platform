@@ -63,6 +63,10 @@ The maintainer said yes to a weekly run on 2026-10-14. A run that passed once sa
 
 The eighth run passed ([38695231460](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/38695231460), commit `7040995`): 101 resources applied, 19 Applications Synced and Healthy, every check in `tests/eks/run.sh` passed, everything destroyed, nothing left, about $0.20 by its own estimate. The seven before it found what no mocked plan could, and each finding is now a check: GitHub's immutable OIDC subject, an AWS name limit, a guardrail that denied reads, the Tagging API listing deleted resources, an anonymous registry limit, EKS 1.37's default metrics-server build breaking the OpenAPI document Argo CD reads, and a teardown that lost the load balancer controller before the load balancer. Seven failed runs cost about a dollar together; none left anything billing beyond the hour it took to clean the one that did.
 
+## A second repository, 2026-10-21
+
+The maintainer said yes to the air-gapped agent (`heyvaldemar/kubernetes-air-gapped-ai-agent`) running its boundary on AWS weekly, up to $5 a month, in this account. Its validation workflow may assume the creation role, in the same `aws-validation` environment (`also_create` in the bootstrap), and nothing more: the same guardrails, the same permissions boundary on every role a run makes, the same budgets and the same kill-switch, which now caps both. The delete-only role stays this repository's. Applied with an in-place change to the creation role's trust policy alone (plan: 0 to add, 1 to change, 0 to destroy); the bootstrap's tests check the trust holds exactly the two subjects, and two plants show they fail if it holds more.
+
 ## How to explain this to a customer
 
 Real cloud tests run once a week and when a person starts them, in an account that exists for nothing else, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.
