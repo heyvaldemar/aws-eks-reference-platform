@@ -1,0 +1,582 @@
+{
+  "repository": "heyvaldemar/aws-eks-reference-platform",
+  "workflow": "kind-e2e.yml",
+  "written_at": "2026-10-24T12:05:27Z",
+  "window_days": 30,
+  "days_with_runs": 14,
+  "green_days": 13,
+  "streak_days": 12,
+  "runs": 55,
+  "runs_passed": 42,
+  "latest": {
+    "conclusion": "success",
+    "at": "2026-10-24T09:06:28Z",
+    "url": "https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/40080643601",
+    "commit": "0640afc",
+    "checks_passed": 112,
+    "checks_failed": 0,
+    "checks": [
+      {
+        "state": "PASS",
+        "name": "running images: all pinned by digest",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace demo enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace team-b enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace gateway enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace argocd enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace monitoring enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace kyverno enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace cert-manager enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace external-secrets enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace envoy-gateway-system enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace object-store enforces restricted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace velero enforces privileged",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "https://demo.platform.test answers, with a certificate the platform CA signed",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "the frontend shows the message External Secrets synced from the store",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "plain HTTP answers with a redirect to HTTPS",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "compliant-pod: admitted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "no-memory-limit: refused by require-requests-limits",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "no-probes: refused by require-probes",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "privileged: refused by violates PodSecurity",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "tag-only-image: refused by require-image-digest",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "tenant-without-pss: refused by require-restricted-tenant",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "require-image-digest is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "require-probes is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "require-requests-limits is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "require-restricted-tenant is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: compliant-pod: admitted",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: no-memory-limit: refused by require-requests-limits",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: no-probes: refused by require-probes",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: privileged: refused by violates PodSecurity",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: tag-only-image: refused by require-image-digest",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: tenant-without-pss: refused by require-restricted-tenant",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD brought Kyverno's admission controller back from zero",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "control: the probe pod can make HTTP calls to a namespace without policies",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "a pod in another namespace cannot reach the demo backend",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "the frontend cannot reach the backend (no policy allows it)",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "the backend cannot reach the internet",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b, made from apps/_template, answers on https://team-b.platform.test",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b got its own generated default-deny",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b cannot read demo's secret through the platform store (demo can, step 3)",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "an Application of team-b's aimed at kube-system is refused by its project",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's manifests pointed at the demo namespace are refused by its project",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "a RoleBinding that would make team-b admin of its namespace is refused by its project",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's syncs run as an account the API server limits to its allow-list in team-b",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's namespace and quota belong to the platform (tenant-team-b), not to the team",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Prometheus scrapes all three demo pods",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "traces from the frontend reach the collector (155 spans counted)",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Prometheus evaluates all 8 SLO rules without errors",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Grafana serves the SLO dashboard",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "a failing frontend makes DemoErrorBudgetBurnFast fire",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "marker written to the backend's volume through the Gateway",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "backup e2e-1792833575 Completed with 1 pod volume(s)",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace demo deleted, and its volume pvc-335ef351-1a12-471d-99a6-e455a9877395 with it",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "restore e2e-1792833575 Completed",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "the marker written before the backup is served again after the restore",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD finds the restored tenant identical to Git",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD resolves v1.2.0 to a commit with the credential it holds",
+        "job": "upgrade"
+      },
+      {
+        "state": "PASS",
+        "name": "running images: all pinned by digest",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace demo enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace team-b enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace gateway enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace argocd enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace monitoring enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace kyverno enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace cert-manager enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace external-secrets enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace envoy-gateway-system enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace object-store enforces restricted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace velero enforces privileged",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "https://demo.platform.test answers, with a certificate the platform CA signed",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "the frontend shows the message External Secrets synced from the store",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "plain HTTP answers with a redirect to HTTPS",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "compliant-pod: admitted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "no-memory-limit: refused by require-requests-limits",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "no-probes: refused by require-probes",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "privileged: refused by violates PodSecurity",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "tag-only-image: refused by require-image-digest",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "tenant-without-pss: refused by require-restricted-tenant",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "require-image-digest is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "require-probes is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "require-requests-limits is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "require-restricted-tenant is compiled into a ValidatingAdmissionPolicy the API server enforces",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: compliant-pod: admitted",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: no-memory-limit: refused by require-requests-limits",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: no-probes: refused by require-probes",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: privileged: refused by violates PodSecurity",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: tag-only-image: refused by require-image-digest",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Kyverno down: tenant-without-pss: refused by require-restricted-tenant",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD brought Kyverno's admission controller back from zero",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "control: the probe pod can make HTTP calls to a namespace without policies",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "a pod in another namespace cannot reach the demo backend",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "the frontend cannot reach the backend (no policy allows it)",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "the backend cannot reach the internet",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b, made from apps/_template, answers on https://team-b.platform.test",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b got its own generated default-deny",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b cannot read demo's secret through the platform store (demo can, step 3)",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "an Application of team-b's aimed at kube-system is refused by its project",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's manifests pointed at the demo namespace are refused by its project",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "a RoleBinding that would make team-b admin of its namespace is refused by its project",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's syncs run as an account the API server limits to its allow-list in team-b",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "team-b's namespace and quota belong to the platform (tenant-team-b), not to the team",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Prometheus scrapes all three demo pods",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "traces from the frontend reach the collector (85 spans counted)",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Prometheus evaluates all 8 SLO rules without errors",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Grafana serves the SLO dashboard",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "a failing frontend makes DemoErrorBudgetBurnFast fire",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "marker written to the backend's volume through the Gateway",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "backup e2e-1792833458 Completed with 1 pod volume(s)",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "namespace demo deleted, and its volume pvc-fe1ffd9b-3bd3-4f28-84da-c988321df6e4 with it",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "restore e2e-1792833458 Completed",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "the marker written before the backup is served again after the restore",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD finds the restored tenant identical to Git",
+        "job": "fresh"
+      },
+      {
+        "state": "PASS",
+        "name": "Argo CD resolves v1.2.0 to a commit with the credential it holds",
+        "job": "fresh"
+      }
+    ],
+    "measured": []
+  }
+}
