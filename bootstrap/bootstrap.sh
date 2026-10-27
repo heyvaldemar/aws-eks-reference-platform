@@ -119,6 +119,17 @@ kubectl label namespace argocd --overwrite \
 # same fields. A re-run only moves the cluster to a new revision (steps 3-4).
 if kubectl -n argocd get deployment argocd-server >/dev/null 2>&1; then
   say "Argo CD is installed and manages itself; not reinstalling"
+  # Except for one field. Argo CD applies its own new release only by syncing
+  # it, alongside every other Application the new revision moves, and a
+  # controller too small for that never gets there: v1.2.0's, at 1Gi, was
+  # OOMKilled nine times syncing a move of nine charts and never applied its
+  # own (kind e2e run 40550141772). So the running controller gets this
+  # revision's memory limit first. When it already has it, nothing restarts.
+  limit="$(sed -n '/^controller:/,/^[a-z]/s/^ *limits: {memory: \([0-9A-Za-z]*\)}$/\1/p' "$ROOT/platform/values/argo-cd/common.yaml")"
+  [ -n "$limit" ] || { echo "could not read the application controller's memory limit" >&2; exit 1; }
+  say "application controller memory limit $limit, before the new revision"
+  kubectl -n argocd set resources statefulset/argocd-application-controller -c application-controller --limits=memory="$limit"
+  kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=5m
 else
   say "Argo CD chart $ARGOCD_CHART_VERSION"
   values=(-f "$ROOT/platform/values/argo-cd/images.yaml" -f "$ROOT/platform/values/argo-cd/common.yaml")

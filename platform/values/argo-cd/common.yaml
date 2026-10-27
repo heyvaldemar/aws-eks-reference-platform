@@ -20,9 +20,14 @@ dex:
 notifications:
   enabled: false
 controller:
+  # An upgrade syncs every Application that moved at once, and the controller
+  # diffs each one on the server. At 1Gi it was OOMKilled nine times moving
+  # v1.2.0 to nine new charts and never finished (kind e2e run 40550141772).
+  # bootstrap/bootstrap.sh reads this limit and gives it to a running
+  # controller before it hands over a new revision.
   resources:
     requests: {cpu: 100m, memory: 256Mi}
-    limits: {memory: 1Gi}
+    limits: {memory: 2Gi}
 server:
   resources:
     requests: {cpu: 20m, memory: 64Mi}
