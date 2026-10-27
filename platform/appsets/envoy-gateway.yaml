@@ -33,7 +33,7 @@ spec:
       sources:
         - repoURL: docker.io/envoyproxy
           chart: gateway-helm
-          targetRevision: v1.9.2
+          targetRevision: v1.9.3
           helm:
             releaseName: envoy-gateway
             ignoreMissingValueFiles: true

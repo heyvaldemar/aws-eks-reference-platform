@@ -33,7 +33,7 @@ spec:
       sources:
         - repoURL: public.ecr.aws/karpenter
           chart: karpenter
-          targetRevision: 1.15.0
+          targetRevision: 1.15.1
           helm:
             releaseName: karpenter
             ignoreMissingValueFiles: true

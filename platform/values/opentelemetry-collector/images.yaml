@@ -4,5 +4,5 @@
 # names each pin a chart bump or a re-pushed tag has left behind.
 image:
   repository: docker.io/otel/opentelemetry-collector-contrib
-  tag: 0.161.0
-  digest: sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1
+  tag: 0.163.2
+  digest: sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849

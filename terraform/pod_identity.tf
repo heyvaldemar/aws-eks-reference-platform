@@ -26,7 +26,7 @@ locals {
       namespace       = "kube-system"
       service_account = "aws-load-balancer-controller"
       # Upstream's policy for this release, unchanged:
-      # https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/v3.6.0/docs/install/iam_policy.json
+      # https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/v3.6.2/docs/install/iam_policy.json
       policy = file("${path.module}/policies/aws-load-balancer-controller.json")
     }
     external-dns = {

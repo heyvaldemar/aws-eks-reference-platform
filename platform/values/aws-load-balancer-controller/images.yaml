@@ -4,4 +4,4 @@
 # names each pin a chart bump or a re-pushed tag has left behind.
 image:
   repository: public.ecr.aws/eks/aws-load-balancer-controller
-  tag: v3.6.0@sha256:337a9bf9a99bbac372c8da20afad7b059e0bc89034f1087e325455b28c7fd488
+  tag: v3.6.2@sha256:fd51f0ec82f8d357837aa57fdfaa4fca7137b75f25a09b421d95c425c9dc2d94
