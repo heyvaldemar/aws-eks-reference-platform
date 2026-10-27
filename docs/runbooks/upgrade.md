@@ -31,7 +31,7 @@ PLATFORM_REVISION=v1.1.0 ./bootstrap/bootstrap.sh kind   # or eks
 make wait
 ```
 
-`bootstrap.sh` does not reinstall Argo CD on a re-run. It first gives the running application controller the memory limit the new revision sets, because that controller syncs everything the revision moves before it gets to its own update ([ADR 1](../decisions/0001-gitops-with-applicationsets.md), revisited 2026-10-27). Then it updates the cluster Secret and the root Application to the new revision, and Argo CD does the rest, Argo CD itself included.
+`bootstrap.sh` does not reinstall Argo CD on a re-run. It first gives the running application controller the memory limit and `GOMEMLIMIT` the new revision sets, because that controller syncs everything the revision moves before it gets to its own update ([ADR 1](../decisions/0001-gitops-with-applicationsets.md), revisited 2026-10-27). Then it updates the cluster Secret and the root Application to the new revision, and Argo CD does the rest, Argo CD itself included.
 
 ## Kubernetes
 
