@@ -117,25 +117,17 @@ kubectl label namespace argocd --overwrite \
 # Once installed, Argo CD manages its own release through
 # platform/appsets/argo-cd.yaml; a second Helm install would fight it for the
 # same fields. A re-run only moves the cluster to a new revision (steps 3-4).
+upgrading=0
 if kubectl -n argocd get deployment argocd-server >/dev/null 2>&1; then
   say "Argo CD is installed and manages itself; not reinstalling"
-  # Except for its memory. Argo CD applies its own new release only by
-  # syncing it, alongside every other Application the new revision moves,
-  # and a controller that runs out of memory doing that never gets there:
-  # v1.2.0's was OOMKilled nine times at 1Gi and nine times at 2Gi (kind e2e
-  # runs 40550141772, 40563291328) and never applied its own update. So the
-  # running controller gets this revision's memory limit and GOMEMLIMIT
-  # first, in one patch. When it already has them, nothing restarts.
-  values="$ROOT/platform/values/argo-cd/common.yaml"
-  limit="$(sed -n '/^controller:/,/^[a-z]/s/^ *limits: {memory: \([0-9A-Za-z]*\)}$/\1/p' "$values")"
-  gomemlimit="$(sed -n '/^controller:/,/^[a-z]/s/^ *env: \[{name: GOMEMLIMIT, value: \([0-9A-Za-z]*\)}\]$/\1/p' "$values")"
+  # Except for its controller's memory, in step 3b. Read here, so a file
+  # this script cannot read stops it before anything has moved.
+  controller_values="$ROOT/platform/values/argo-cd/common.yaml"
+  limit="$(sed -n '/^controller:/,/^[a-z]/s/^ *limits: {memory: \([0-9A-Za-z]*\)}$/\1/p' "$controller_values")"
+  gomemlimit="$(sed -n '/^controller:/,/^[a-z]/s/^ *env: \[{name: GOMEMLIMIT, value: \([0-9A-Za-z]*\)}\]$/\1/p' "$controller_values")"
   [ -n "$limit" ] && [ -n "$gomemlimit" ] ||
-    { echo "could not read the application controller's memory limit and GOMEMLIMIT from $values" >&2; exit 1; }
-  say "application controller: memory limit $limit, GOMEMLIMIT $gomemlimit, before the new revision"
-  kubectl -n argocd patch statefulset argocd-application-controller --type strategic -p "$(printf \
-    '{"spec":{"template":{"spec":{"containers":[{"name":"application-controller","resources":{"limits":{"memory":"%s"}},"env":[{"name":"GOMEMLIMIT","value":"%s"}]}]}}}}' \
-    "$limit" "$gomemlimit")"
-  kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=5m
+    { echo "could not read the application controller's memory limit and GOMEMLIMIT from $controller_values" >&2; exit 1; }
+  upgrading=1
 else
   say "Argo CD chart $ARGOCD_CHART_VERSION"
   values=(-f "$ROOT/platform/values/argo-cd/images.yaml" -f "$ROOT/platform/values/argo-cd/common.yaml")
@@ -218,6 +210,38 @@ kubectl -n argocd create secret generic in-cluster \
   kubectl apply -f - >/dev/null
 echo "labels:      ${labels[*]}"
 echo "revision:    $PLATFORM_REVISION"
+
+# --- 3b. on a re-run, the controller's memory before the new charts ----------
+# Argo CD applies its own new release only by syncing it, alongside every
+# other Application the new revision moves, and a controller that runs out of
+# memory on the way never gets there: moving v1.2.0 to v1.3.0's charts, its
+# 1Gi controller was OOMKilled again and again (kind e2e run 40550141772).
+# A patch before step 3 does not hold: Argo CD heals the StatefulSet back to
+# the revision its Application still names, within seconds (its cgroup read
+# 1Gi again in run 40576198900). Step 3 has just pointed every Application's
+# values at the new revision. Once the argo-cd Application names it, the
+# StatefulSet it wants carries the new limit and GOMEMLIMIT too, so the patch
+# is what Argo CD would apply itself, and it stays. The chart versions, and
+# the CRD changes that make the controller's memory climb, come in step 4.
+if [ "$upgrading" = 1 ]; then
+  say "application controller: memory limit $limit, GOMEMLIMIT $gomemlimit, before the new charts"
+  names() { kubectl -n argocd get application argo-cd -o jsonpath='{.spec.sources[*].targetRevision}' 2>/dev/null; }
+  for _ in $(seq 1 60); do
+    [[ " $(names) " == *" $PLATFORM_REVISION "* ]] && break
+    sleep 2
+  done
+  [[ " $(names) " == *" $PLATFORM_REVISION "* ]] ||
+    { echo "the argo-cd Application does not name $PLATFORM_REVISION after two minutes; run this script again" >&2; exit 1; }
+  kubectl -n argocd patch statefulset argocd-application-controller --type strategic -p "$(printf \
+    '{"spec":{"template":{"spec":{"containers":[{"name":"application-controller","resources":{"limits":{"memory":"%s"}},"env":[{"name":"GOMEMLIMIT","value":"%s"}]}]}}}}' \
+    "$limit" "$gomemlimit")"
+  kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=5m
+  sleep 15
+  held="$(kubectl -n argocd get statefulset argocd-application-controller \
+    -o jsonpath='{.spec.template.spec.containers[?(@.name=="application-controller")].resources.limits.memory}')"
+  [ "$held" = "$limit" ] ||
+    { echo "Argo CD set the application controller's memory limit back to $held" >&2; exit 1; }
+fi
 
 # --- 4. the root Application ---------------------------------------------------
 # Syncs run as the service account their project names, and a project that

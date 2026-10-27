@@ -22,18 +22,18 @@ notifications:
 controller:
   # An upgrade that changes existing CRDs makes the controller reload the
   # whole cluster's OpenAPI schema once per CRD event (gitops-engine
-  # pkg/cache/cluster.go), with its cache full. Moving v1.2.0 to nine new
-  # charts, about a hundred CRDs, it was OOMKilled nine times at 1Gi (kind
-  # e2e run 40550141772) and nine times at 2Gi (run 40563291328), while a
-  # fresh install fits in 1Gi. Most of that is garbage: GOMEMLIMIT makes Go
-  # collect it before the kernel kills the process, at about 90% of the
-  # limit, as Argo CD's high-availability guide advises for this spike.
-  # bootstrap/bootstrap.sh reads both lines below and gives them to a
-  # running controller before it hands over a new revision.
-  env: [{name: GOMEMLIMIT, value: 1800MiB}]
+  # pkg/cache/cluster.go), with its cache full. Moving v1.2.0 to v1.3.0's
+  # charts, about a hundred CRDs, it was OOMKilled again and again at 1Gi;
+  # read from its cgroup, the controller that finished that upgrade peaked at
+  # 1631 MiB (kind e2e run 40576202356), while a fresh install fits in 1Gi.
+  # 4Gi is the limit that run had. GOMEMLIMIT at about 90% of it makes Go
+  # collect before the kernel kills the process, as Argo CD's
+  # high-availability guide advises. bootstrap/bootstrap.sh reads both lines
+  # below and gives them to a running controller before the new charts.
+  env: [{name: GOMEMLIMIT, value: 3600MiB}]
   resources:
     requests: {cpu: 100m, memory: 256Mi}
-    limits: {memory: 2Gi}
+    limits: {memory: 4Gi}
 server:
   resources:
     requests: {cpu: 20m, memory: 64Mi}
