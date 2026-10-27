@@ -101,6 +101,32 @@ r=json.load(sys.stdin)["data"]["result"]
 print(r[0]["value"][1] if r else "")' 2>/dev/null
 }
 
+controller() {  # restarts and last termination of Argo CD's application controller
+  kubectl -n argocd get pods -l app.kubernetes.io/name=argocd-application-controller -o jsonpath='{range .items[*]}{.metadata.name}: {.status.containerStatuses[0].restartCount} restarts, last ended {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{" "}{end}' 2>/dev/null
+}
+
+controller_history() {  # starts and back-offs of the controller's pods, as far as events go back
+  kubectl -n argocd get events -o json 2>/dev/null | python3 -c '
+import json, sys
+started = backoff = 0
+for e in json.load(sys.stdin)["items"]:
+    if not e["involvedObject"].get("name", "").startswith("argocd-application-controller-"):
+        continue
+    n = e.get("count") or (e.get("series") or {}).get("count") or 1
+    if e["reason"] == "Started":
+        started += n
+    elif e["reason"] == "BackOff":
+        backoff += n
+print("started %d times and backed off %d times in the last hour of events" % (started, backoff))' 2>/dev/null
+}
+
+# Not a check: how Argo CD's controller came through the install or the
+# upgrade before this. On 27 October an upgrade took 21 minutes to converge
+# where a fresh install of the same commit took 7, and a passing run said
+# nothing about whether the controller had been killed on the way. Its pod is
+# replaced during an upgrade, so the events count what the pod no longer can.
+printf 'Argo CD application controller: %s; %s\n' "$(controller)" "$(controller_history)"
+
 # --- 1 -----------------------------------------------------------------------
 step "1. every running image is pinned by digest"
 # kube-system and local-path-storage come with the kind node image, which is
@@ -299,9 +325,6 @@ rev="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.tar
 # Each escape starts once the controller is rolled out and Ready, and still
 # has to be refused within the same two minutes; a missing refusal names the
 # controller's restarts and how its last run ended.
-controller() {  # restarts and last termination of Argo CD's application controller
-  kubectl -n argocd get pods -l app.kubernetes.io/name=argocd-application-controller -o jsonpath='{range .items[*]}{.metadata.name}: {.status.containerStatuses[0].restartCount} restarts, last ended {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{" "}{end}' 2>/dev/null
-}
 escape() {  # escape <name> <path> <destination namespace> <namespace in the manifests>: what Argo CD said
   if ! kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s >/dev/null 2>&1; then
     echo "Argo CD's application controller was not Ready within 5 minutes; $(controller)"
