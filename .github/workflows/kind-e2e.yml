@@ -138,6 +138,26 @@ jobs:
         if: steps.previous.outputs.tag != ''
         run: ./tests/e2e/upgrade-marker.sh write
 
+      - name: "Experiment: sample the application controller's cgroup memory"
+        if: steps.previous.outputs.tag != ''
+        run: |
+          cat > "$RUNNER_TEMP/sample.sh" <<'EOS'
+          while true; do
+            for node in $(kind get nodes --name reference-platform); do
+              docker exec "$node" sh -c '
+                for id in $(crictl ps -a --name application-controller -q 2>/dev/null); do
+                  d=$(find /sys/fs/cgroup -type d -name "cri-containerd-$id.scope" 2>/dev/null | head -1)
+                  [ -n "$d" ] || continue
+                  echo "$(date +%T) $id peak=$(cat $d/memory.peak 2>/dev/null) current=$(cat $d/memory.current) anon=$(awk "\$1==\"anon\"{print \$2}" $d/memory.stat) oom_kill=$(awk "\$1==\"oom_kill\"{print \$2}" $d/memory.events) max=$(cat $d/memory.max)"
+                done' 2>/dev/null
+            done
+            sleep 3
+          done
+          EOS
+          nohup bash "$RUNNER_TEMP/sample.sh" > "$RUNNER_TEMP/controller-mem.log" 2>&1 &
+          sleep 5
+          cat "$RUNNER_TEMP/controller-mem.log"
+
       - name: Move the cluster to this commit
         if: steps.previous.outputs.tag != ''
         env:
@@ -158,6 +178,29 @@ jobs:
         run: |
           ./tests/e2e/upgrade-marker.sh check
           ./tests/e2e/run.sh
+
+      - name: "Experiment: the application controller's memory, per container"
+        if: always() && steps.previous.outputs.tag != ''
+        run: |
+          f="$RUNNER_TEMP/controller-mem.log"
+          echo "samples: $(wc -l < "$f")"
+          python3 - "$f" <<'EOP'
+          import re, sys
+          seen = {}
+          for line in open(sys.argv[1]):
+              m = re.match(r"(\S+) (\S+) peak=(\d*) current=(\d*) anon=(\d*) oom_kill=(\d*) max=(\S+)", line)
+              if not m:
+                  continue
+              t, cid, peak, cur, anon, oom, mx = m.groups()
+              s = seen.setdefault(cid, {"first": t, "peak": 0, "anon": 0, "oom": 0, "max": mx})
+              s["last"] = t
+              s["peak"] = max(s["peak"], int(peak or 0))
+              s["anon"] = max(s["anon"], int(anon or 0))
+              s["oom"] = max(s["oom"], int(oom or 0))
+          for cid, s in sorted(seen.items(), key=lambda kv: kv[1]["first"]):
+              print("%s  %s..%s  peak %.0f MiB  max anon sampled %.0f MiB  oom_kill %d  limit %s" % (
+                  cid[:12], s["first"], s["last"], s["peak"] / 2**20, s["anon"] / 2**20, s["oom"], s["max"]))
+          EOP
 
       - name: Keep the results for the status workflow
         if: always()
