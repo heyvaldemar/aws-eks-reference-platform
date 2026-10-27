@@ -30,10 +30,10 @@ controller:
   # limit, as Argo CD's high-availability guide advises for this spike.
   # bootstrap/bootstrap.sh reads both lines below and gives them to a
   # running controller before it hands over a new revision.
-  env: [{name: GOMEMLIMIT, value: 1800MiB}]
+  env: [{name: GOMEMLIMIT, value: 7200MiB}]
   resources:
     requests: {cpu: 100m, memory: 256Mi}
-    limits: {memory: 2Gi}
+    limits: {memory: 8Gi}
 server:
   resources:
     requests: {cpu: 20m, memory: 64Mi}
