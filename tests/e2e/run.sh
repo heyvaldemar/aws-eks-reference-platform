@@ -292,7 +292,21 @@ kubectl -n team-b delete externalsecret e2e-borrowed-secret --ignore-not-found >
 refused='not permitted|do not match any of the allowed destinations'
 repo="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.repoURL}')"
 rev="$(kubectl -n argocd get application platform -o jsonpath='{.spec.source.targetRevision}')"
+# The refusal is written into the Application by Argo CD's application
+# controller, so a controller that is not running reads as "no message". On
+# 2026-10-27 (run 40524076167, first attempt) it was in restart back-off while
+# the third escape waited, and the check failed on that, not on the project.
+# Each escape starts once the controller is rolled out and Ready, and still
+# has to be refused within the same two minutes; a missing refusal names the
+# controller's restarts and how its last run ended.
+controller() {  # restarts and last termination of Argo CD's application controller
+  kubectl -n argocd get pods -l app.kubernetes.io/name=argocd-application-controller -o jsonpath='{range .items[*]}{.metadata.name}: {.status.containerStatuses[0].restartCount} restarts, last ended {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{" "}{end}' 2>/dev/null
+}
 escape() {  # escape <name> <path> <destination namespace> <namespace in the manifests>: what Argo CD said
+  if ! kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s >/dev/null 2>&1; then
+    echo "Argo CD's application controller was not Ready within 5 minutes; $(controller)"
+    return
+  fi
   kubectl apply -f - >/dev/null <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -327,6 +341,7 @@ print(" | ".join(m for m in out if m))' 2>/dev/null)"
     sleep 5
   done
   kubectl -n argocd delete application "$1" --ignore-not-found --wait=false >/dev/null
+  grep -qiE "$refused" <<<"$msg" || msg="${msg:-no message}; application controller: $(controller)"
   echo "$msg"
 }
 msg="$(escape e2e-tenant-escape apps/team-b/overlays/kind kube-system kube-system)"

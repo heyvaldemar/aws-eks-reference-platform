@@ -109,15 +109,26 @@ kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" || 
 section "Warning events, last 40"
 kubectl get events -A --field-selector type=Warning --sort-by=.lastTimestamp 2>/dev/null | tail -40
 
+section "Containers the kubelet stopped, and evictions"
+# A pod replaced since it restarted shows no restarts below; these events
+# still say whether a probe, an eviction or a rollout stopped it.
+for reason in Killing Evicted; do
+  kubectl get events -A --field-selector reason="$reason" --sort-by=.lastTimestamp 2>/dev/null | tail -20
+done
+
 section "Logs of restarting containers"
+# How the last run ended comes first: a log that stops mid-line says nothing
+# about an OOM kill or a failed liveness probe, and the reason does.
 kubectl get pods -A -o json | python3 -c '
 import json, sys
 for p in json.load(sys.stdin)["items"]:
     for c in p.get("status", {}).get("containerStatuses", []):
         if c.get("restartCount", 0) > 0:
-            print(p["metadata"]["namespace"], p["metadata"]["name"], c["name"])
-' | while read -r ns pod container; do
-  echo "--- $ns/$pod $container (previous run)"
+            t = (c.get("lastState") or {}).get("terminated") or {}
+            print(p["metadata"]["namespace"], p["metadata"]["name"], c["name"], c["restartCount"],
+                  t.get("reason", "-"), t.get("exitCode", "-"), t.get("finishedAt", "-"))
+' | while read -r ns pod container restarts reason code at; do
+  echo "--- $ns/$pod $container (previous run; $restarts restarts, last ended $reason, exit $code, at $at)"
   kubectl -n "$ns" logs "$pod" -c "$container" --previous --tail=40 2>&1
 done
 
