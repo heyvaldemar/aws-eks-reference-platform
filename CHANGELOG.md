@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-27
+
+The EKS run is weekly. Its first scheduled run, [39552880368](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/39552880368) on `aef3ae3` on 21 October, applied the Terraform, passed 14 of 14 checks against AWS and estimated its own cost at about $0.14, and the README and the EKS badges say so from that run. Since 1.2.0, metrics-server is held on eksbuild.13, every pin the freshness check reported on 27 October has moved, Argo CD's application controller has the memory to upgrade the platform, Dependabot's updates merge again once both gates are green, and `AGENTS.md` writes down what an AI agent working here is held to.
+
 ### Changed
 
 - Pins moved to what upstream has released, which the freshness check reported on 27 October (Verification run 40524079645): charts argo-cd 10.11.6, aws-load-balancer-controller 3.6.2, cert-manager v1.21.3, gateway-helm v1.9.3, external-secrets 2.14.0, karpenter 1.15.1, kube-prometheus-stack 92.14.1, kyverno 3.9.2 and opentelemetry-collector 0.178.0 (the last two released on 27 October, after the first report). Every image their defaults moved is pinned by the digest its tag resolves to today: Argo CD v3.5.6, the Load Balancer Controller v3.6.2, cert-manager v1.21.3 (five images), Envoy Gateway v1.9.3 and its rate limit build 5ae0682e, the Envoy proxy v1.39.5, External Secrets v2.14.0, Kyverno v1.19.2 (seven images), prometheus-operator and its config reloader v0.94.2, Prometheus v3.15.1, Thanos v0.42.5. kyverno v1.19.2 and promtool v3.15.1 in `tools.lock`, checked against each project's checksum file; the Terraform CI image, whose `1.16` tag upstream moved to 1.16.7. The Load Balancer Controller's IAM policy is the same in v3.6.2 as in v3.6.0. The Load Balancer Controller and Karpenter run only on EKS: here they are rendered and validated, and the next scheduled EKS run is the first to run these versions.
@@ -111,7 +115,8 @@ The EKS path, applied to a real AWS account for the first time. Run [38695231460
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.0...v1.0.1
