@@ -191,4 +191,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           pip install --quiet --user --require-hashes -r .github/requirements-ci.txt
+          python3 scripts/check-freshness.py selftest
           python3 scripts/check-freshness.py

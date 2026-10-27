@@ -2,6 +2,8 @@
 """Report every pin in this repository that upstream has moved past.
 
     GH_TOKEN=... scripts/check-freshness.py
+    scripts/check-freshness.py selftest   show it a registry that keeps answering
+                                          429, and fail unless it says so
 
 Pins are what make a green build mean something, and they are also what goes
 stale without a sound. This compares each one with upstream and prints a
@@ -21,6 +23,14 @@ same Verification and kind e2e as any other change.
   kind node     kind/cluster.yaml against the Kubernetes version targeted
   kubernetes    the targeted minor against EKS's newest, and its support end
   terraform     the AWS provider in terraform/.terraform.lock.hcl
+
+A registry that keeps refusing is not a pin behind and not a pin current.
+ECR Public throttles anonymous requests by source address, and GitHub's
+shared runners share theirs: on 27 October about half of this job's runs met
+"429 toomanyrequests: Data limit exceeded" for the same three pins, which
+resolved from everywhere else. A refusal is tried three times over three
+minutes; after that the pin is reported as not checked, which fails the run
+as a pin behind does, and the summary never counts it as current.
 """
 import datetime
 import glob
@@ -29,6 +39,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 
 import yaml
@@ -37,11 +48,38 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 problems = []
+not_checked = []
 
 
 def behind(what, detail):
     problems.append(what)
     print("::error::%s: %s" % (what, detail))
+
+
+def unchecked(what, detail):
+    not_checked.append(what)
+    print("::error::%s: %s" % (what, detail))
+
+
+class Unchecked(Exception):
+    """A registry refused to answer: the pin is neither current nor behind."""
+
+
+THROTTLED = re.compile(r"\b429\b|toomanyrequests", re.I)
+WAITS = (60, 120)  # before the second and the third try
+throttled_hosts = {}
+
+
+def registry(ref):
+    """The registry host of an image reference, and what to call it."""
+    first = ref.split("/", 1)[0]
+    host = first if "/" in ref and ("." in first or ":" in first) else "docker.io"
+    return host, ("ECR Public" if host == "public.ecr.aws" else host)
+
+
+def last_line(text):
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    return lines[-1][:300] if lines else "no message"
 
 
 def ok(what, detail):
@@ -111,13 +149,30 @@ def check_charts():
                     ok(what, pinned)
 
 
+def imagetools(ref):
+    return subprocess.run(["docker", "buildx", "imagetools", "inspect", ref], capture_output=True, text=True)
+
+
 def digest_of(ref):
-    for _ in range(3):
-        r = subprocess.run(["docker", "buildx", "imagetools", "inspect", ref],
-                           capture_output=True, text=True)
+    """The digest the tag resolves to now; None if it does not resolve.
+    Raises Unchecked when the registry is still throttling after three tries,
+    or already did earlier in this run."""
+    host, name = registry(ref)
+    if host in throttled_hosts:
+        raise Unchecked("could not check: %s throttled earlier in this run (%s)" % (name, throttled_hosts[host]))
+    throttled = None
+    for attempt in range(3):
+        if attempt and throttled:
+            time.sleep(WAITS[attempt - 1])
+        r = imagetools(ref)
         m = re.search(r"^Digest:\s+(sha256:[0-9a-f]{64})", r.stdout, re.M)
         if m:
             return m.group(1)
+        out = r.stdout + r.stderr
+        throttled = last_line(out) if THROTTLED.search(out) else None
+    if throttled:
+        throttled_hosts[host] = throttled
+        raise Unchecked("could not check: %s throttled, three tries over %d seconds (%s)" % (name, sum(WAITS), throttled))
     return None
 
 
@@ -153,7 +208,11 @@ def check_images():
                 walk(doc)
     for ref in sorted(refs):
         name, _, pinned = ref.partition("@")
-        now = digest_of(name)
+        try:
+            now = digest_of(name)
+        except Unchecked as e:
+            unchecked("image %s" % name, str(e))
+            continue
         if now is None:
             behind("image %s" % name, "did not resolve; the registry did not answer or the tag is gone")
         elif now != pinned:
@@ -175,8 +234,13 @@ TOOL_RELEASES = {
 
 def rendered_images(env, out, default_images):
     environ = dict(os.environ, RENDER_CHART_DEFAULT_IMAGES="1" if default_images else "0")
-    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "render.py"), env, out],
-                   check=True, capture_output=True, env=environ)
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "render.py"), env, out],
+                       capture_output=True, text=True, env=environ)
+    if r.returncode != 0:
+        # render.py tries a throttled chart pull three times itself.
+        if THROTTLED.search(r.stderr):
+            raise Unchecked("could not check: the %s render was throttled pulling a chart (%s)" % (env, last_line(r.stderr)))
+        raise RuntimeError("render.py %s exited %d: %s" % (env, r.returncode, last_line(r.stderr)))
     refs = set()
     for f in glob.glob(os.path.join(out, "*.yaml")):
         refs.update(re.findall(r"image: \"?([\w.-]+(?:/[\w.-]+)+:[\w.-]+)(?:@sha256:[0-9a-f]{64})?", open(f, encoding="utf-8").read()))
@@ -229,7 +293,11 @@ def check_ci_images():
         if not m:
             continue
         var, name, pinned = m.groups()
-        now = digest_of(name)
+        try:
+            now = digest_of(name)
+        except Unchecked as e:
+            unchecked("ci image %s" % var, str(e))
+            continue
         if now != pinned:
             behind("ci image %s" % var, "pinned %s, %s now resolves to %s" % (pinned, name, now))
         else:
@@ -269,15 +337,57 @@ def check_terraform():
             ok("provider %s" % source, pinned)
 
 
-def main():
-    for check in (check_charts, check_images, check_chart_images, check_tools, check_ci_images, check_kubernetes, check_terraform):
+def summary():
+    if not_checked:
+        print("%d pin(s) could not be checked, so how many are behind is not known; "
+              "%d behind among the rest" % (len(not_checked), len(problems)))
+    else:
+        print("%d pin(s) behind upstream" % len(problems))
+    return 1 if problems or not_checked else 0
+
+
+def main(checks=(check_charts, check_images, check_chart_images, check_tools, check_ci_images, check_kubernetes, check_terraform)):
+    for check in checks:
         try:
             check()
+        except Unchecked as e:
+            unchecked(check.__name__, str(e))
         except Exception as e:  # one unreachable upstream must not hide the others
             behind(check.__name__, "could not complete: %s" % e)
-    print("%d pin(s) behind upstream" % len(problems))
-    return 1 if problems else 0
+    return summary()
+
+
+def selftest():
+    """A registry that answers 429 every time must fail the run as not
+    checked, after three tries, and stop asking that host; one that answers
+    must still be checked."""
+    global imagetools, WAITS
+    calls = []
+
+    def fake(ref):
+        calls.append(ref)
+        if ref.startswith("public.ecr.aws/"):
+            return subprocess.CompletedProcess([], 1, "", "ERROR: unexpected status from HEAD request to "
+                                               "https://public.ecr.aws/v2/x/manifests/1: 429 Too Many Requests\n"
+                                               "toomanyrequests: Data limit exceeded\n")
+        return subprocess.CompletedProcess([], 0, "Name: %s\nDigest: sha256:%s\n" % (ref, "a" * 64), "")
+
+    imagetools, WAITS = fake, (0, 0)
+    import io, contextlib
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = main(checks=(lambda: [digest_of("public.ecr.aws/eks/a:1"), None],
+                            lambda: [digest_of("public.ecr.aws/docker/library/b:2"), None],
+                            lambda: digest_of("quay.io/c/d:3") == "sha256:" + "a" * 64 or behind("control", "an answering registry was not read")))
+    text = out.getvalue()
+    ok = (code == 1 and calls.count("public.ecr.aws/eks/a:1") == 3 and "public.ecr.aws/docker/library/b:2" not in calls
+          and "quay.io/c/d:3" in calls and len(not_checked) == 2 and not problems
+          and "could not check: ECR Public throttled" in text and "0 pin(s) behind upstream" not in text)
+    print(text, end="")
+    print("selftest: %s (exit %d, %d tries on the throttled host, %d not checked, %d behind)"
+          % ("ok" if ok else "FAILED", code, len([c for c in calls if c.startswith("public.ecr.aws/")]), len(not_checked), len(problems)))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(selftest() if sys.argv[1:] == ["selftest"] else main())

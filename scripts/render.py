@@ -33,6 +33,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import yaml
 
@@ -176,6 +177,28 @@ def run(cmd, **kw):
     return r.stdout
 
 
+# ECR Public throttles anonymous pulls by source address, and GitHub's shared
+# runners share theirs: on 27 October it answered Karpenter's chart with "429
+# toomanyrequests: Data limit exceeded". A throttled pull is tried three times
+# over three minutes; then the render stops and says it was throttled.
+THROTTLED = re.compile(r"\b429\b|toomanyrequests", re.I)
+PULL_WAITS = (60, 120)  # before the second and the third try
+
+
+def pull(cmd):
+    for attempt in range(3):
+        if attempt:
+            time.sleep(PULL_WAITS[attempt - 1])
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode == 0:
+            return
+        if not THROTTLED.search(r.stdout + r.stderr):
+            break
+    throttled = THROTTLED.search(r.stdout + r.stderr)
+    sys.exit("%s\n%s%s%s" % (" ".join(cmd), r.stdout[-3000:], r.stderr[-3000:],
+                             "throttled: three tries over %d seconds\n" % sum(PULL_WAITS) if throttled else ""))
+
+
 def chart_dir(src):
     if not src.get("chart"):
         # A chart in this repository, as Argo CD detects it: a path with a
@@ -186,9 +209,9 @@ def chart_dir(src):
     if not os.path.isdir(os.path.join(dest, chart)):
         os.makedirs(dest, exist_ok=True)
         if repo.startswith("http"):
-            run(["helm", "pull", chart, "--repo", repo, "--version", version, "--untar", "--untardir", dest])
+            pull(["helm", "pull", chart, "--repo", repo, "--version", version, "--untar", "--untardir", dest])
         else:
-            run(["helm", "pull", "oci://%s/%s" % (repo, chart), "--version", version, "--untar", "--untardir", dest])
+            pull(["helm", "pull", "oci://%s/%s" % (repo, chart), "--version", version, "--untar", "--untardir", dest])
     return os.path.join(dest, chart)
 
 
