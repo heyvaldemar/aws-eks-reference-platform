@@ -59,8 +59,9 @@ run "trust" {
     condition = toset(jsondecode(aws_iam_role.create.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"]) == toset([
       "repo:heyvaldemar@10498744/aws-eks-reference-platform@1414733910:environment:aws-validation",
       "repo:heyvaldemar@10498744/kubernetes-air-gapped-ai-agent@1421238353:environment:aws-validation",
+      "repo:heyvaldemar@10498744/kubernetes-llm-inference-gateway@1439207666:environment:aws-validation",
     ])
-    error_message = "the creation role trusts the aws-validation environment of this repository and of the air-gapped agent, and nothing else"
+    error_message = "the creation role trusts the aws-validation environment of this repository, the air-gapped agent and the inference gateway, and nothing else"
   }
   assert {
     condition     = jsondecode(aws_iam_role.sweep.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == ["repo:heyvaldemar@10498744/aws-eks-reference-platform@1414733910:environment:aws-sweeper"]

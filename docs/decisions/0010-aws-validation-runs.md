@@ -67,6 +67,10 @@ The eighth run passed ([38695231460](https://github.com/heyvaldemar/aws-eks-refe
 
 The maintainer said yes to the air-gapped agent (`heyvaldemar/kubernetes-air-gapped-ai-agent`) running its boundary on AWS weekly, up to $5 a month, in this account. Its validation workflow may assume the creation role, in the same `aws-validation` environment (`also_create` in the bootstrap), and nothing more: the same guardrails, the same permissions boundary on every role a run makes, the same budgets and the same kill-switch, which now caps both. The delete-only role stays this repository's. Applied with an in-place change to the creation role's trust policy alone (plan: 0 to add, 1 to change, 0 to destroy); the bootstrap's tests check the trust holds exactly the two subjects, and two plants show they fail if it holds more.
 
+## A third repository, 2026-10-29
+
+The maintainer said yes to an inference reference (`heyvaldemar/kubernetes-llm-inference-gateway`) serving a model on a GPU node weekly, under the budget he set for it, in this account. It joins `also_create` on the same terms as the air-gapped agent: the creation role in the `aws-validation` environment, the same guardrails, permissions boundary, budgets and kill-switch, and no delete-only role of its own. The account's GPU quota (8 vCPU of G and VT instances) was raised for the air-gapped agent on 2026-10-22 and is shared. The bootstrap's tests check the trust holds exactly the three subjects.
+
 ## How to explain this to a customer
 
 Real cloud tests run once a week and when a person starts them, in an account that exists for nothing else, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.

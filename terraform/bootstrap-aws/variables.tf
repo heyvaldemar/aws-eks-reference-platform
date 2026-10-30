@@ -48,7 +48,8 @@ variable "also_create" {
   EOT
   type        = map(string)
   default = {
-    "heyvaldemar/kubernetes-air-gapped-ai-agent" = "heyvaldemar@10498744/kubernetes-air-gapped-ai-agent@1421238353"
+    "heyvaldemar/kubernetes-air-gapped-ai-agent"   = "heyvaldemar@10498744/kubernetes-air-gapped-ai-agent@1421238353"
+    "heyvaldemar/kubernetes-llm-inference-gateway" = "heyvaldemar@10498744/kubernetes-llm-inference-gateway@1439207666"
   }
 
   validation {
