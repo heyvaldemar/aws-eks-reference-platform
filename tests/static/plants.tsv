@@ -5,7 +5,7 @@
 "manifests/base/gateway.yaml"	"  gatewayClassName: envoy\n"	"  gatewayClass: envoy\n"	"kubeconform"	"a misspelled field in a custom resource (Gateway)"
 "apps/demo/base/frontend.yaml"	"            readOnlyRootFilesystem: true\n"	"            readOnlyRootFilesystem: false\n"	"kube-linter"	"a writable root filesystem"
 "apps/demo/base/frontend.yaml"	"apiVersion: policy/v1\nkind: PodDisruptionBudget"	"apiVersion: policy/v1beta1\nkind: PodDisruptionBudget"	"pluto"	"an API version removed in 1.25"
-"platform/appsets/kyverno.yaml"	"          targetRevision: 3.10.0-rc.3\n"	"          targetRevision: 3.10.*\n"	"argocd"	"a chart version range"
+"platform/appsets/kyverno.yaml"	"          targetRevision: 3.10.0-rc.3\n"	"          targetRevision: 3.*\n"	"argocd"	"a chart version range"
 "platform/appsets/tenants.yaml"	"        targetRevision: '{{ .metadata.annotations.platform_revision }}'"	"        targetRevision: main"	"argocd"	"a Git source on a branch"
 "policies/tests/require-probes/kyverno-test.yaml"	"  - {isValidatingPolicy: true, policy: require-probes, kind: StatefulSet, resources: [no-liveness], result: fail}\n"	""	"policy-tests"	"a policy test that never shows a violation"
 "policies/require-image-digest.yaml"	"    - expression: variables.containers.all(c, c.image.contains('@sha256:'))"	"    - expression: variables.containers.all(c, c.image.contains(':'))"	"kyverno"	"a digest policy weakened to accept tags"
