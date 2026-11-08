@@ -7,40 +7,48 @@ crds:
     image:
       registry: reg.kyverno.io
       repository: kyverno/kyverno-cli
-      tag: v1.19.2@sha256:322ec5044d600930cb3af0e56dc33154a2d1d1fba58f4cadad3f47be7e78b11c
+      tag: v1.20.0-rc.3@sha256:c90e419788b7e2e88f4e64554f7df952ffd72b80cebc30e2401d7ef03dc8fc89
+upgrade:
+  # Since 1.20 a hook checks for policies Kyverno no longer runs before it
+  # installs or upgrades. It runs the CLI image.
+  legacyPolicyCheck:
+    image:
+      registry: reg.kyverno.io
+      repository: kyverno/kyverno-cli
+      tag: v1.20.0-rc.3@sha256:c90e419788b7e2e88f4e64554f7df952ffd72b80cebc30e2401d7ef03dc8fc89
 webhooksCleanup:
   image:
     registry: ghcr.io
     repository: kyverno/readiness-checker
-    tag: v1.19.2@sha256:02600428e7c956e222f4376413525866ed9fec28e6bcb1222774ce6bf5fc904a
+    tag: v1.20.0-rc.3@sha256:fdbc751419852bf7f507cb2188a49a7726ffd6f402515d55ad48607b5b38b7e4
 test:
   image:
     registry: ghcr.io
     repository: kyverno/readiness-checker
-    tag: v1.19.2@sha256:02600428e7c956e222f4376413525866ed9fec28e6bcb1222774ce6bf5fc904a
+    tag: v1.20.0-rc.3@sha256:fdbc751419852bf7f507cb2188a49a7726ffd6f402515d55ad48607b5b38b7e4
 admissionController:
   initContainer:
     image:
       registry: reg.kyverno.io
       repository: kyverno/kyvernopre
-      tag: v1.19.2@sha256:27f3cc52e628559b56d08363b85316819802086c9808606914f7805a244148f4
+      tag: v1.20.0-rc.3@sha256:3183bcf56a5bf1dd4317a066f1f9c37e2d5205849b1d7d08467d0d07a840f908
   container:
     image:
       registry: reg.kyverno.io
       repository: kyverno/kyverno
-      tag: v1.19.2@sha256:c8c4dd09e720d2cd7fd24ca73ac28e46651001372f988e0cba3f2f612f04b955
+      tag: v1.20.0-rc.3@sha256:e424ad787ec392f1efa080b05944ca74e663f78769b3851c74c29885bc9373c1
 backgroundController:
   image:
     registry: reg.kyverno.io
     repository: kyverno/background-controller
-    tag: v1.19.2@sha256:c46e124f21ef8a6bb4b48de57106808b1007edcd5ddd4ff7df5d23b9efa60ce2
+    tag: v1.20.0-rc.3@sha256:ca3d5022c60037522ca86c6f8309aedec15383851b3a3ffa10250478a5387c94
 cleanupController:
   image:
     registry: reg.kyverno.io
     repository: kyverno/cleanup-controller
-    tag: v1.19.2@sha256:d7340aa7c9315080c3dafa7b765d090ced37353e89e5cd7a3f9ac69e8fb532b2
+    tag: v1.20.0-rc.3@sha256:9a2f0bbc1fd15b61879c9d53a4ebd6459673d75d6ed34e5650d61bbf49b317db
 reportsController:
   image:
     registry: reg.kyverno.io
     repository: kyverno/reports-controller
-    tag: v1.19.2@sha256:5fb6d3e738050dbce84f60ecabaede7665fbe0578d07c1e8c912443b035e79c3
+    tag: v1.20.0-rc.3@sha256:5326745e0fd409876fa38a73e5705f5761a5599cf262e02783619f50fc8b7505

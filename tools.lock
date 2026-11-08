@@ -18,8 +18,8 @@ kubeconform v0.8.0 linux-amd64 https://github.com/yannh/kubeconform/releases/dow
 kubeconform v0.8.0 darwin-arm64 https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-arm64.tar.gz kubeconform f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67
 kube-linter v0.8.3 linux-amd64 https://github.com/stackrox/kube-linter/releases/download/v0.8.3/kube-linter-linux kube-linter 618d299a3e2839c8ca9d86fce0db617be0fba41f0fecbbbfb7fbf1c04299fae1
 kube-linter v0.8.3 darwin-arm64 https://github.com/stackrox/kube-linter/releases/download/v0.8.3/kube-linter-darwin_arm64 kube-linter 662277a6a267ba2cb1371b56539a371872ef142b196fa0d87195e4213773cdf8
-kyverno v1.19.2 linux-amd64 https://github.com/kyverno/kyverno/releases/download/v1.19.2/kyverno-cli_v1.19.2_linux_x86_64.tar.gz kyverno 357eaf1df8bc24ddd5a73979fadeaae6a032e8710f11af264229756e4956bf4a
-kyverno v1.19.2 darwin-arm64 https://github.com/kyverno/kyverno/releases/download/v1.19.2/kyverno-cli_v1.19.2_darwin_arm64.tar.gz kyverno 7915c03c613c22363a100adb3da8d06f2e2626d9d21a98b97f921795ffdc536f
+kyverno v1.20.0-rc.3 linux-amd64 https://github.com/kyverno/kyverno/releases/download/v1.20.0-rc.3/kyverno-cli_v1.20.0-rc.3_linux_x86_64.tar.gz kyverno 1646dcfd5ced6f536e65c435e74fd11ac007a82b6b558a15ac12f0ba8c346eff
+kyverno v1.20.0-rc.3 darwin-arm64 https://github.com/kyverno/kyverno/releases/download/v1.20.0-rc.3/kyverno-cli_v1.20.0-rc.3_darwin_arm64.tar.gz kyverno 601691a7842143d3a7e46fe44668395b7077be013496e247fd6f10562a26527b
 pluto v5.24.5 linux-amd64 https://github.com/FairwindsOps/pluto/releases/download/v5.24.5/pluto_5.24.5_linux_amd64.tar.gz pluto 80076e01a320e1f4db30f5dbc927d204e61cd8abed66fa0b4644ca61cd86b39e
 pluto v5.24.5 darwin-arm64 https://github.com/FairwindsOps/pluto/releases/download/v5.24.5/pluto_5.24.5_darwin_arm64.tar.gz pluto 61edf3054dc3aa2622fed933067c8dcfb4c6f4e95ed4d9e4fc4a21e68a17fe43
 promtool v3.16.0 linux-amd64 https://github.com/prometheus/prometheus/releases/download/v3.16.0/prometheus-3.16.0.linux-amd64.tar.gz prometheus-3.16.0.linux-amd64/promtool 68727009472a2c02e1ff7f062fd5b3e637285bffc8fc2d340c76fb449d6e0f34
