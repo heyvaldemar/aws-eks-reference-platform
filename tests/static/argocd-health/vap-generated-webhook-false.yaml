@@ -1,0 +1,30 @@
+# The status Kyverno 1.19.2 left on require-image-digest after our four
+# ValidatingPolicies were applied together on a kind cluster (2026-11-09),
+# unchanged five minutes later: the generated VAP enforces the policy, and
+# WebhookConfigured stays False (kyverno/kyverno#17088). Argo CD 3.6.1's own
+# check calls it Degraded; ours must not.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-image-digest
+  generation: 1
+  annotations:
+    reference-platform.test/expect-health: Healthy
+    reference-platform.test/expect-message: generated ValidatingAdmissionPolicy
+status:
+  autogen: {}
+  conditionStatus:
+    conditions:
+      - lastTransitionTime: "2026-11-09T02:08:33Z"
+        message: Policy is not configured in the webhook.
+        reason: Failed
+        status: "False"
+        type: WebhookConfigured
+      - lastTransitionTime: "2026-11-09T02:08:33Z"
+        message: Policy is ready for reporting.
+        reason: Succeeded
+        status: "True"
+        type: RBACPermissionsGranted
+    message: ""
+    ready: false
+  generated: true

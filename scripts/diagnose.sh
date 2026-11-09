@@ -63,6 +63,22 @@ for o in items:
 ' "$resource" "$name"
 done
 
+section "Kyverno policies not ready"
+# Argo CD 3.6 counts a Kyverno policy Healthy only when its status says
+# ready, and keeps no per-resource health in the Application, so a Degraded
+# policies Application names no policy above. Each policy's own conditions do.
+for kind in validatingpolicies generatingpolicies mutatingpolicies imagevalidatingpolicies; do
+  kubectl get "$kind.policies.kyverno.io" -o json 2>/dev/null | python3 -c '
+import json, sys
+for p in json.load(sys.stdin)["items"]:
+    st = p.get("status", {}); cs = st.get("conditionStatus", {})
+    if cs.get("ready") is True:
+        continue
+    bad = ["%s=%s: %s" % (c.get("type"), c.get("status"), c.get("message", "")) for c in cs.get("conditions", []) if c.get("status") != "True"]
+    print("  %s %s: ready=%s generated=%s %s" % (p["kind"], p["metadata"]["name"], cs.get("ready"), st.get("generated"), "; ".join(bad) or "no conditions yet"))
+'
+done
+
 section "APIServices not Available"
 # One unavailable aggregated API is enough for Argo CD to fail every cache
 # sync with "the server is currently unable to handle the request".

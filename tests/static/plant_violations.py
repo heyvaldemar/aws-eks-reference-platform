@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-NEEDS_RENDER = {"images", "kubeconform", "kube-linter", "pluto", "argocd", "promtool"}
+NEEDS_RENDER = {"images", "kubeconform", "kube-linter", "pluto", "argocd", "argocd-health", "promtool"}
 
 
 def main():

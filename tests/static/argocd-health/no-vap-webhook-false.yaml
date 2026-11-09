@@ -1,0 +1,23 @@
+# Without a generated VAP, a policy missing from the webhook enforces
+# nothing at admission: Degraded, as Argo CD's own check says.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-requests-limits
+  generation: 1
+  annotations:
+    reference-platform.test/expect-health: Degraded
+    reference-platform.test/expect-message: "WebhookConfigured: "
+status:
+  conditionStatus:
+    conditions:
+      - message: Policy is not configured in the webhook.
+        reason: Failed
+        status: "False"
+        type: WebhookConfigured
+      - message: Policy is ready for reporting.
+        reason: Succeeded
+        status: "True"
+        type: RBACPermissionsGranted
+    ready: false
+  generated: false

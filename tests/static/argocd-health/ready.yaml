@@ -1,0 +1,23 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-restricted-tenant
+  generation: 2
+  annotations:
+    reference-platform.test/expect-health: Healthy
+    reference-platform.test/expect-message: Webhook configured.
+status:
+  conditionStatus:
+    conditions:
+      - message: Webhook configured.
+        observedGeneration: 2
+        reason: Succeeded
+        status: "True"
+        type: WebhookConfigured
+      - message: Policy is ready for reporting.
+        observedGeneration: 2
+        reason: Succeeded
+        status: "True"
+        type: RBACPermissionsGranted
+    ready: true
+  generated: true

@@ -1,0 +1,7 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-image-digest
+  generation: 1
+  annotations:
+    reference-platform.test/expect-health: Progressing

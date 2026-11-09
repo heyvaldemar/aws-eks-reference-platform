@@ -9,6 +9,9 @@
 #   pluto         no API removed or deprecated as of 1.37
 #   argocd        no chart range and no Git branch as a source; every tenant
 #                 confined to its own namespace (check-argocd.py)
+#   argocd-health Argo CD's health verdicts on tests/static/argocd-health, in
+#                 the pinned Argo CD image with the rendered argocd-cm
+#                 (check-argocd-health.py)
 #   policy-tests  every policy has a test that shows it a violation
 #   kyverno       the policy tests themselves (kyverno test)
 #   promtool      every PrometheusRule is valid PromQL, and the SLO alerts
@@ -19,7 +22,8 @@
 # out/ if it is there. Exit status is the number of checks that failed.
 #
 # Tools: helm, kubectl, kubeconform, kube-linter, pluto, kyverno, promtool, python3 with
-# PyYAML. scripts/install-tools.sh installs the pinned versions.
+# PyYAML, and docker for argocd-health. scripts/install-tools.sh installs the
+# pinned versions.
 # The check_* functions are called by name from the loop at the bottom.
 # shellcheck disable=SC2329
 set -uo pipefail
@@ -87,6 +91,8 @@ check_pluto() {
 
 check_argocd() { python3 scripts/check-argocd.py "${ENVS[@]/#/out/}"; }
 
+check_argocd_health() { python3 scripts/check-argocd-health.py "${ENVS[@]/#/out/}"; }
+
 check_policy_tests() { python3 scripts/check-policy-tests.py; }
 
 check_kyverno() { kyverno test policies/tests; }
@@ -123,7 +129,7 @@ PY
   promtool test rules tests/slo/*.test.yaml
 }
 
-all=(render images kubeconform kube-linter pluto argocd policy-tests kyverno promtool)
+all=(render images kubeconform kube-linter pluto argocd argocd-health policy-tests kyverno promtool)
 selected=("$@")
 [ ${#selected[@]} -eq 0 ] && selected=("${all[@]}")
 if [ ! -d out/kind ] && [[ " ${selected[*]} " != *" render "* ]]; then

@@ -35,7 +35,8 @@ Every line below is a check that fails the build when the claim stops being true
 | A deleted namespace comes back with its data | Velero backup, `kubectl delete namespace`, restore, then a marker written before the backup is read back | daily |
 | An upgrade from the previous release keeps data | previous release installed, marker written, cluster moved to the new commit, marker read | every change, from the first release after v1.0.0 |
 | The EKS Terraform keeps its security posture | `terraform test` on a mocked plan; 27 planted violations, each must fail it | every change |
-| Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 25 planted violations across all static checks | every change |
+| Manifests are valid for Kubernetes 1.37 and use no removed API | kubeconform against the CRDs the platform installs, pluto; 28 planted violations across all static checks | every change |
+| Argo CD judges the policies' health rightly | Argo CD's own health command, in the pinned image with the rendered argocd-cm, on five recorded statuses: a policy its generated VAP enforces is Healthy despite the WebhookConfigured condition Kyverno 1.19 can leave False ([kyverno#17088](https://github.com/kyverno/kyverno/issues/17088)); a policy missing permissions, or missing from the webhook without a VAP, is Degraded | every change |
 | No pin silently falls behind | every chart, image, tool and provider compared with upstream | weekly |
 | The hands-on guide works as written | its three break-and-fix exercises run with every symptom, diagnosis and fix checked | weekly, and on any change to the guide |
 

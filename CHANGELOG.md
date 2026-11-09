@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- An install of v1.3.1 could stop on a policy that worked. Kyverno 1.19 can leave a ValidatingPolicy at `ready=false` with "WebhookConfigured: Policy is not configured in the webhook." while the ValidatingAdmissionPolicy generated from it enforces it, at random among policies applied together ([kyverno/kyverno#17088](https://github.com/kyverno/kyverno/issues/17088), fixed in Kyverno 1.20 by #17119, not backported to 1.19). Argo CD 3.6, new in v1.3.1, reads that as Degraded, and the `policies` Application stayed Synced Degraded until the run timed out (kind e2e run 42544332226, installing v1.3.1). On a kind cluster with Kyverno 1.19.2 and our values, five of six batches of our four policies left one or two of them so, unchanged five minutes later, each with its VAP generated and its permissions granted. Argo CD's health check for ValidatingPolicy is now overridden in `argocd-cm` with its own 3.6.1 script changed in one place: on a policy whose VAP was generated, WebhookConfigured=False is not a failure, as Kyverno 1.20 decides it itself. Any other False condition is still Degraded, and admission is still proven by e2e step 4 with Kyverno up and down. Drop the override once Kyverno is on 1.20.
+- `scripts/diagnose.sh` lists every Kyverno policy that is not ready with its failed conditions: Argo CD 3 keeps no per-resource health in an Application, so a Degraded `policies` named no policy.
+
+### Added
+
+- A static check, `argocd-health`: Argo CD's own `argocd admin settings resource-overrides health`, run offline in the Argo CD image `images.yaml` pins with the `argocd-cm` the chart renders, on five recorded policy statuses in `tests/static/argocd-health/`. The status Kyverno 1.19.2 left on `require-image-digest` must be Healthy; a policy missing permissions, or missing from the webhook without a VAP, must be Degraded. Three plants: the override made inert, the override excusing every failed condition, and the override under a key Argo CD ignores without a word. Static checks: 10, plants: 28.
+
 ## [1.3.1] - 2026-11-09
 
 A patch release. The freshness check crashed on release candidates, which hid half of what had fallen behind; it now orders them, and every pin it reported on 8 November has moved, Argo CD to 3.6 and kube-prometheus-stack to 93 among them. On AWS, v1.3.0 passed the scheduled EKS run of 28 October ([40646369182](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/40646369182) on `b8da3c3`), and the newest, [41792571957](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/41792571957) on `9f31b04` on 4 November, passed 14 of 14 checks and estimated its own cost at about $0.16. This release's chart moves first run on AWS in the next scheduled run.
