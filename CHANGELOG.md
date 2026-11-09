@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The ValidatingPolicy health override added in 1.3.2 says when it goes: at the first of Kyverno 1.20 GA or a Kyverno 1.19.3 that carries kyverno/kyverno#17119, whose cherry-pick to 1.19 was asked for on the pull request on 9 November ([comment](https://github.com/kyverno/kyverno/pull/17119#issuecomment-6731660309)). With it go the fixture `tests/static/argocd-health/vap-generated-webhook-false.yaml` and its three plants.
+
 ## [1.3.2] - 2026-11-09
 
 A patch release for one defect in 1.3.1: Argo CD 3.6 counted a Kyverno ValidatingPolicy Degraded when Kyverno 1.19 wrongly reported it not ready, and an install could time out on it. Nothing else changes.
