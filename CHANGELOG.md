@@ -4,9 +4,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-09
+
+A patch release. The freshness check crashed on release candidates, which hid half of what had fallen behind; it now orders them, and every pin it reported on 8 November has moved, Argo CD to 3.6 and kube-prometheus-stack to 93 among them. On AWS, v1.3.0 passed the scheduled EKS run of 28 October ([40646369182](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/40646369182) on `b8da3c3`), and the newest, [41792571957](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/41792571957) on `9f31b04` on 4 November, passed 14 of 14 checks and estimated its own cost at about $0.16. This release's chart moves first run on AWS in the next scheduled run.
+
 ### Changed
 
 - Pins moved to what upstream has released, which the freshness check reported on 8 November once it could read every pin: charts argo-cd 10.17.0 (Argo CD v3.6.1, a minor of Argo CD itself), gateway-helm v1.10.0, kube-prometheus-stack 93.1.0 (a new major for prometheus-operator v0.95.1, whose CRDs only gain fields and whose ClusterRole gains `alertmanagerconfigs/status` and drops `delete` on pods; Argo CD applies the CRDs as it did across 92.x), opentelemetry-collector 0.178.2 and velero 12.2.3. Every image their defaults moved is pinned by the digest its tag resolves to today: Argo CD v3.6.1, Envoy Gateway v1.10.0 and the Envoy proxy distroless-v1.40.2 that v1.10.0 compiles in, prometheus-operator and its config reloader v0.95.1, Prometheus v3.16.0, Alertmanager v0.34.2, Grafana 13.3.0, k8s-sidecar 2.14.3, kube-webhook-certgen 1.11.1; the collector and Velero moves change no image. kubectl v1.37.2, pluto v5.24.5 and promtool v3.16.0 in `tools.lock`, each checked against its publisher's checksum file. Argo CD 3.6 and Envoy Gateway 1.10 are the first minors of each tested on Kubernetes 1.37. Argo CD 3.6 diffs on the server as each project's impersonated account and brings health checks for Kyverno's ValidatingPolicy and GeneratingPolicy, Velero's Schedule and Alertmanager, so those now count toward Synced and Healthy.
+- The creation role in the validation account also trusts the inference gateway's validation workflow (`heyvaldemar/kubernetes-llm-inference-gateway`), on the air-gapped agent's terms (ADR 10, "A third repository"). Applied on 2026-10-29 as one change to the role's trust policy and read back from IAM with exactly three subjects.
+- Dependabot moved the AWS provider to 6.72.0 in `terraform/.terraform.lock.hcl` (#18, #20) and the CodeQL actions to v4.39.3 and cosign-installer to v4.1.3 (#19).
+
+### Added
+
+- Release Assets checks what it attached: a last job downloads the archive, its Sigstore bundle and its SLSA provenance from the release, runs `cosign verify-blob` and `slsa-verifier` on them, and shows each a copy of the archive with one byte appended, which both must refuse. The comment beside the SLSA generator now says what OpenSSF Scorecard does with that line: the generator must be referenced by tag, so Scorecard scores it as an unpinned dependency, 8 of 10.
 
 ### Fixed
 
@@ -124,7 +134,8 @@ The EKS path, applied to a real AWS account for the first time. Run [38695231460
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.0.1...v1.1.0
