@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-09
+
+A patch release for one defect in 1.3.1: Argo CD 3.6 counted a Kyverno ValidatingPolicy Degraded when Kyverno 1.19 wrongly reported it not ready, and an install could time out on it. Nothing else changes.
+
 ### Fixed
 
 - An install of v1.3.1 could stop on a policy that worked. Kyverno 1.19 can leave a ValidatingPolicy at `ready=false` with "WebhookConfigured: Policy is not configured in the webhook." while the ValidatingAdmissionPolicy generated from it enforces it, at random among policies applied together ([kyverno/kyverno#17088](https://github.com/kyverno/kyverno/issues/17088), fixed in Kyverno 1.20 by #17119, not backported to 1.19). Argo CD 3.6, new in v1.3.1, reads that as Degraded, and the `policies` Application stayed Synced Degraded until the run timed out (kind e2e run 42544332226, installing v1.3.1). On a kind cluster with Kyverno 1.19.2 and our values, five of six batches of our four policies left one or two of them so, unchanged five minutes later, each with its VAP generated and its permissions granted. Argo CD's health check for ValidatingPolicy is now overridden in `argocd-cm` with its own 3.6.1 script changed in one place: on a policy whose VAP was generated, WebhookConfigured=False is not a failure, as Kyverno 1.20 decides it itself. Any other False condition is still Degraded, and admission is still proven by e2e step 4 with Kyverno up and down. Drop the override once Kyverno is on 1.20.
@@ -143,7 +147,8 @@ The EKS path, applied to a real AWS account for the first time. Run [38695231460
 - Runbooks for upgrade, rollback, restore and incident, and a hands-on guide whose three exercises run as written every week.
 - Thirteen decision records, each ending with how the choice would be explained to a customer; a threat model with the check behind every control; a Well-Architected review with the evidence and the gaps.
 
-[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/heyvaldemar/aws-eks-reference-platform/compare/v1.1.0...v1.2.0
