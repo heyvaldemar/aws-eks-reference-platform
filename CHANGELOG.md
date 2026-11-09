@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- The freshness check orders release candidates instead of crashing on them. A pin on Kyverno 1.20.0-rc.3 (branch `kyverno-1.20-rc`, Verification run 42535549074) made the version comparison raise "'>' not supported between instances of 'tuple' and 'NoneType'", which ended the chart and tool checks at that pin and left every pin after it unread: on `main` that hid four of the eight pins behind. A pre-release now sorts below its own release and above the one before it, as SemVer orders them, so a candidate pinned ahead of the newest release is current and is reported behind once its release is out. A candidate is never offered as the version to move to, and a pin the check cannot order is reported on its own line. `check-freshness.py selftest` orders seven versions from 3.9.2 through 3.10.0-alpha.1 and -rc.10 to v3.10.1 and checks each verdict; with the old comparison put back it fails with the same TypeError.
+
 ## [1.3.0] - 2026-10-27
 
 The EKS run is weekly. Its first scheduled run, [39552880368](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/39552880368) on `aef3ae3` on 21 October, applied the Terraform, passed 14 of 14 checks against AWS and estimated its own cost at about $0.14, and the README and the EKS badges say so from that run. Since 1.2.0, metrics-server is held on eksbuild.13, every pin the freshness check reported on 27 October has moved, Argo CD's application controller has the memory to upgrade the platform, Dependabot's updates merge again once both gates are green, and `AGENTS.md` writes down what an AI agent working here is held to.

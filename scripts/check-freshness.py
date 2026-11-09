@@ -3,7 +3,9 @@
 
     GH_TOKEN=... scripts/check-freshness.py
     scripts/check-freshness.py selftest   show it a registry that keeps answering
-                                          429, and fail unless it says so
+                                          429, and versions with release
+                                          candidates, and fail unless it orders
+                                          and reports both as it should
 
 Pins are what make a green build mean something, and they are also what goes
 stale without a sound. This compares each one with upstream and prints a
@@ -95,13 +97,40 @@ def get(url, gh=False):
 
 
 def semver(v):
-    m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)$", v)
-    return tuple(int(x) for x in m.groups()) if m else None
+    """A sort key for X.Y.Z or vX.Y.Z with an optional pre-release (-rc.3):
+    a pre-release sorts below its own release and above the one before it,
+    its numeric identifiers as numbers, as SemVer orders them. None for
+    anything else. Kyverno 1.20's release candidates, pinned on a branch on
+    8 November, made the old X.Y.Z-only key return None and the comparison
+    raise, which ended the chart and tool checks at the first such pin."""
+    m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$", str(v))
+    if not m:
+        return None
+    major, minor, patch, pre = m.groups()
+    if pre is None:
+        return (int(major), int(minor), int(patch), (1,))
+    return (int(major), int(minor), int(patch),
+            (0,) + tuple((0, int(i), "") if i.isdigit() else (1, 0, i) for i in pre.split(".")))
+
+
+def stable(v):
+    k = semver(v)
+    return k is not None and k[3] == (1,)
 
 
 def newest(versions):
-    vs = [v for v in versions if semver(v)]
+    """The newest release, never a pre-release: a release candidate is not
+    something to move a pin to, though a pin may sit on one."""
+    vs = [v for v in versions if stable(v)]
     return max(vs, key=semver) if vs else None
+
+
+def verdict(pinned, latest):
+    """'behind', 'ok', or 'unordered' when the pin is not a version this
+    check can order (reported, never raised, so the next pin is still read)."""
+    if semver(pinned) is None:
+        return "unordered"
+    return "behind" if semver(latest) > semver(pinned) else "ok"
 
 
 def gh_releases(repo, pattern):
@@ -143,7 +172,9 @@ def check_charts():
                 what = "chart %s" % chart
                 if latest is None:
                     behind(what, "could not find any release upstream; the pin %s is unchanged" % pinned)
-                elif semver(latest) > semver(pinned):
+                elif verdict(pinned, latest) == "unordered":
+                    behind(what, "pinned %s, which this check cannot order; latest is %s" % (pinned, latest))
+                elif verdict(pinned, latest) == "behind":
                     behind(what, "pinned %s, latest is %s" % (pinned, latest))
                 else:
                     ok(what, pinned)
@@ -281,7 +312,9 @@ def check_tools():
         else:
             repo, pattern = TOOL_RELEASES[name]
             latest = newest(gh_releases(repo, pattern))
-        if latest and semver(latest) > semver(pinned):
+        if latest and verdict(pinned, latest) == "unordered":
+            behind("tool %s" % name, "pinned %s, which this check cannot order; latest is %s" % (pinned, latest))
+        elif latest and verdict(pinned, latest) == "behind":
             behind("tool %s" % name, "pinned %s, latest is %s" % (pinned, latest))
         else:
             ok("tool %s" % name, pinned)
@@ -331,7 +364,9 @@ def check_terraform():
     lock = open(os.path.join(ROOT, "terraform", ".terraform.lock.hcl"), encoding="utf-8").read()
     for source, pinned in re.findall(r'provider "registry\.terraform\.io/([^"]+)" \{\s*version\s*=\s*"([^"]+)"', lock):
         latest = json.loads(get("https://registry.terraform.io/v1/providers/" + source))["version"]
-        if semver(latest) > semver(pinned):
+        if verdict(pinned, latest) == "unordered":
+            behind("provider %s" % source, "locked %s, which this check cannot order; latest is %s" % (pinned, latest))
+        elif verdict(pinned, latest) == "behind":
             behind("provider %s" % source, "locked %s, latest is %s" % (pinned, latest))
         else:
             ok("provider %s" % source, pinned)
@@ -386,7 +421,25 @@ def selftest():
     print(text, end="")
     print("selftest: %s (exit %d, %d tries on the throttled host, %d not checked, %d behind)"
           % ("ok" if ok else "FAILED", code, len([c for c in calls if c.startswith("public.ecr.aws/")]), len(not_checked), len(problems)))
-    return 0 if ok else 1
+    # Versions: a release candidate orders between the release before it and
+    # its own release, and a pin on one is compared, not crashed on.
+    order = ["3.9.2", "3.10.0-alpha.1", "3.10.0-beta.2", "3.10.0-rc.3", "3.10.0-rc.10", "3.10.0", "v3.10.1"]
+    cases = [("3.10.0-rc.3", "3.9.2", "ok"),         # a candidate pinned ahead of the newest release
+             ("3.10.0-rc.3", "3.10.0", "behind"),    # its release is out
+             ("v1.37.1", "v1.37.2", "behind"), ("v1.37.2", "v1.37.2", "ok"),
+             ("latest", "1.0.0", "unordered")]
+    try:
+        keys = [semver(v) for v in order]
+        ordered = all(a is not None and b is not None and a < b for a, b in zip(keys, keys[1:]))
+        got = [verdict(p, l) for p, l, _ in cases]
+        newest_ok = newest(["3.9.2", "3.10.0-rc.3", "nightly"]) == "3.9.2"
+        versions_ok = ordered and got == [w for _, _, w in cases] and newest_ok
+        detail = "%d in order: %s, verdicts %s, newest of a list with a candidate %s" % (
+            len(order), "yes" if ordered else "no", got, newest(["3.9.2", "3.10.0-rc.3", "nightly"]))
+    except Exception as e:  # the old comparison raised here
+        versions_ok, detail = False, "%s: %s" % (type(e).__name__, e)
+    print("selftest versions: %s (%s)" % ("ok" if versions_ok else "FAILED", detail))
+    return 0 if ok and versions_ok else 1
 
 
 if __name__ == "__main__":
