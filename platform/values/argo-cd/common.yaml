@@ -13,16 +13,18 @@ configs:
     # Argo CD 3.6.1's own health check for Kyverno's ValidatingPolicy, changed
     # in one place. Kyverno 1.19 can leave a policy at ready=false with
     # "WebhookConfigured: Policy is not configured in the webhook." while the
-    # ValidatingAdmissionPolicy generated from it enforces it, at random among
-    # policies applied together (kyverno/kyverno#17088): two of our four, for
-    # good, in five of six batches on 1.19.2. Argo CD 3.6 reads that as
+    # ValidatingAdmissionPolicy generated from it stays in place, at random
+    # among policies applied together (kyverno/kyverno#17088): two of our four,
+    # for good, in five of six batches on 1.19.2. Argo CD 3.6 reads that as
     # Degraded, and an install of v1.3.1 timed out on it. On a policy whose
     # VAP was generated, WebhookConfigured=False is therefore not a failure,
-    # which is how Kyverno 1.20 decides it itself (kyverno/kyverno#17119).
+    # which is how Kyverno 1.20 decides it itself: commit
+    # https://github.com/kyverno/kyverno/commit/d633c49a9a65, which closed
+    # #17088, is in v1.20.0-rc.3 and not in v1.19.2, the newest 1.19.
     # Any other False condition is still Degraded. tests/static/argocd-health
     # holds the cases. Drop this key at the first of two: Kyverno 1.20 GA, or a
-    # Kyverno 1.19.3 that carries #17119 (a cherry-pick was asked for on the PR
-    # on 2026-11-09). Then the fixture that expects Healthy and its three plants go.
+    # Kyverno 1.19 release that carries d633c49a9a65 (none as of 1.19.2).
+    # Then the fixture that expects Healthy and its three plants go.
     resource.customizations.health.policies.kyverno.io_ValidatingPolicy: |
       local hs = {}
       if obj.status ~= nil and obj.status.conditionStatus ~= nil then
