@@ -14,14 +14,14 @@ prometheusOperator:
   image:
     registry: quay.io
     repository: prometheus-operator/prometheus-operator
-    tag: v0.95.1
-    sha: 9c2490af910d58ec2abd77642d340e30bd5e2de5c80fd19ab4b49e28dc7bbb83
+    tag: v0.95.2
+    sha: 7986c2afa118c9dea07d01c5e1a29555824582e92f6ee8607591d1a7178acf29
   prometheusConfigReloader:
     image:
       registry: quay.io
       repository: prometheus-operator/prometheus-config-reloader
-      tag: v0.95.1
-      sha: 39bdbade0c64f7c38bb6d18d6f602b14ad489bc189b709dc9266b49e6647aac1
+      tag: v0.95.2
+      sha: cc74ddedad4ab1c49446971f6d51302ad4303d8660a2018af925c7f62c114304
   admissionWebhooks:
     patch:
       image:
@@ -48,14 +48,14 @@ alertmanager:
     image:
       registry: quay.io
       repository: prometheus/alertmanager
-      tag: v0.34.2
-      sha: 39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b
+      tag: v0.35.0
+      sha: 5f6e66c01bd610aef6dd671642a52eee775fd3a89bd8788ebada33efaf373d10
 grafana:
   image:
     registry: docker.io
     repository: grafana/grafana
-    tag: 13.3.0-distroless
-    sha: 540b8afb775bf34aefce417e4329039daa5d44b6f2fbda6881397b1b247ca7df
+    tag: 13.3.1-distroless
+    sha: 54e297ac67e2b72572f926892f4e06074dc4f79f2a56ed9a9ca9a88a46f28733
   sidecar:
     image:
       registry: quay.io

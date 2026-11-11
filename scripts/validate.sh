@@ -3,6 +3,10 @@
 #
 #   render        scripts/render.py for kind and eks, into out/
 #   images        every image reference pinned by digest (scripts/check-images.py)
+#   platforms     every pinned digest lists each platform its nodes run: amd64
+#                 on kind; on EKS the system AMI's and every architecture the
+#                 Karpenter NodePools allow (check-platforms.py, asks the
+#                 registries)
 #   kubeconform   every object valid for Kubernetes 1.37, custom resources
 #                 against the CRDs the platform itself installs, strictly
 #   kube-linter   the manifests this repository authors (.kube-linter.yaml)
@@ -22,8 +26,8 @@
 # out/ if it is there. Exit status is the number of checks that failed.
 #
 # Tools: helm, kubectl, kubeconform, kube-linter, pluto, kyverno, promtool, python3 with
-# PyYAML, and docker for argocd-health. scripts/install-tools.sh installs the
-# pinned versions.
+# PyYAML, docker for argocd-health, and anonymous HTTPS to the image registries
+# for platforms. scripts/install-tools.sh installs the pinned versions.
 # The check_* functions are called by name from the loop at the bottom.
 # shellcheck disable=SC2329
 set -uo pipefail
@@ -48,6 +52,11 @@ check_render() {
 }
 
 check_images() { python3 scripts/check-images.py "${ENVS[@]/#/out/}"; }
+
+check_platforms() {
+  python3 scripts/check-platforms.py selftest || return 1
+  python3 scripts/check-platforms.py "${ENVS[@]/#/out/}"
+}
 
 check_kubeconform() {
   rm -rf .cache/schemas
@@ -129,7 +138,7 @@ PY
   promtool test rules tests/slo/*.test.yaml
 }
 
-all=(render images kubeconform kube-linter pluto argocd argocd-health policy-tests kyverno promtool)
+all=(render images platforms kubeconform kube-linter pluto argocd argocd-health policy-tests kyverno promtool)
 selected=("$@")
 [ ${#selected[@]} -eq 0 ] && selected=("${all[@]}")
 if [ ! -d out/kind ] && [[ " ${selected[*]} " != *" render "* ]]; then

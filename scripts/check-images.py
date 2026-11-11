@@ -54,30 +54,35 @@ def is_image(ref):
     return ":" in name.split("/")[-1] or "@sha256:" in ref
 
 
+def references(d):
+    """Yield (file, object, path, reference) for every image reference in the
+    rendered directory d. scripts/check-platforms.py reads the same ones."""
+    for fname in sorted(os.listdir(d)):
+        if not fname.endswith(".yaml"):
+            continue
+        with open(os.path.join(d, fname), encoding="utf-8") as f:
+            for doc in yaml.load_all(f, Loader=Loader):
+                if not isinstance(doc, dict):
+                    continue
+                if doc.get("kind") == "CustomResourceDefinition":
+                    continue
+                hook = (doc.get("metadata") or {}).get("annotations") or {}
+                if "test" in str(hook.get("helm.sh/hook", "")).split(","):
+                    continue
+                obj = "%s/%s" % (doc.get("kind"), (doc.get("metadata") or {}).get("name"))
+                for path, s in strings(doc):
+                    for m in REF.finditer(s):
+                        if is_image(m.group(1)):
+                            yield fname, obj, path, m.group(1)
+
+
 def main(dirs):
     bad, seen = [], set()
     for d in dirs:
-        for fname in sorted(os.listdir(d)):
-            if not fname.endswith(".yaml"):
-                continue
-            with open(os.path.join(d, fname), encoding="utf-8") as f:
-                for doc in yaml.load_all(f, Loader=Loader):
-                    if not isinstance(doc, dict):
-                        continue
-                    if doc.get("kind") == "CustomResourceDefinition":
-                        continue
-                    hook = (doc.get("metadata") or {}).get("annotations") or {}
-                    if "test" in str(hook.get("helm.sh/hook", "")).split(","):
-                        continue
-                    obj = "%s/%s" % (doc.get("kind"), (doc.get("metadata") or {}).get("name"))
-                    for path, s in strings(doc):
-                        for m in REF.finditer(s):
-                            ref = m.group(1)
-                            if not is_image(ref):
-                                continue
-                            seen.add(ref)
-                            if not re.search(r"@sha256:[0-9a-f]{64}$", ref):
-                                bad.append("%s/%s  %s  %s: %s" % (os.path.basename(d), fname, obj, path, ref))
+        for fname, obj, path, ref in references(d):
+            seen.add(ref)
+            if not re.search(r"@sha256:[0-9a-f]{64}$", ref):
+                bad.append("%s/%s  %s  %s: %s" % (os.path.basename(d), fname, obj, path, ref))
     for line in sorted(set(bad)):
         print("NOT PINNED  " + line)
     print("%d image references, %d without a digest" % (len(seen), len(set(bad))))

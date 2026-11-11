@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- 1.3.1 and 1.3.2 do not come up on EKS. The weekly run on the AWS account failed on 11 November 2026 ([run 42981638335](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/42981638335), on `71440e7`, its first on 1.3.1's pins): prometheus-operator stayed in ImagePullBackOff with "no match for platform in manifest", and kube-prometheus-stack stayed OutOfSync and Degraded while the other 18 Applications were Synced and Healthy; the run's destroy job, which also looks for residue, then passed. 1.3.1's move to kube-prometheus-stack 93.1.0 (`8a5004a`) pinned prometheus-operator and its config reloader v0.95.1, whose image indexes list five manifests each, every one for linux/amd64 (upstream's own report: [prometheus-operator/prometheus-operator#8953](https://github.com/prometheus-operator/prometheus-operator/issues/8953)), and the system nodes are Graviton (arm64). Every check before AWS passed, because every runner is amd64. Now kube-prometheus-stack 93.2.0, with prometheus-operator and the config reloader v0.95.2, whose indexes list linux/amd64, linux/arm64 and three more. The chart also moves its defaults to Alertmanager v0.35.0 and Grafana 13.3.1, pinned by digest with them. Alertmanager v0.35.0 removes `--enable-feature=auto-gomemlimit` and renames eventrecorder outputs; the operator passes `--enable-feature` only from `spec.enableFeatures`, and the platform sets neither. Alertmanager runs on EKS only, so the next scheduled EKS run is the first to run v0.35.0.
+
+### Added
+
+- A static check, `platforms` (`scripts/check-platforms.py`): every pinned digest's manifest, read anonymously from its registry, must list each platform its nodes run, linux/amd64 on kind and, on EKS, the architecture of the system nodes' `ami_type` and every one the Karpenter NodePools allow (today linux/amd64 and linux/arm64). A registry that throttles or fails is asked three times, and a digest it does not answer is reported and fails the check. Two plants: the v0.95.1 operator pin of the 11 November run, and a NodePool that allows s390x. `check-platforms.py selftest` runs its logic against a fixture registry. Static checks: 11, plants: 30.
+
 ### Changed
 
 - The ValidatingPolicy health override added in 1.3.2 says when it goes: at the first of Kyverno 1.20 GA or a Kyverno 1.19 release that carries the fix, commit [d633c49](https://github.com/kyverno/kyverno/commit/d633c49a9a65) (which closed [kyverno/kyverno#17088](https://github.com/kyverno/kyverno/issues/17088); it is in v1.20.0-rc.3, and v1.19.2, the newest 1.19, does not carry it). With it go the fixture `tests/static/argocd-health/vap-generated-webhook-false.yaml` and its three plants.
