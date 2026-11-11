@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-11
+
+A patch release for one defect in 1.3.1 and 1.3.2: on EKS they do not come up, because the prometheus-operator image they pin has no arm64 and the system nodes are Graviton. On AWS nothing in it has run yet; the scheduled run of 18 November is the first.
+
 ### Fixed
 
 - 1.3.1 and 1.3.2 do not come up on EKS. The weekly run on the AWS account failed on 11 November 2026 ([run 42981638335](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/42981638335), on `71440e7`, its first on 1.3.1's pins): prometheus-operator stayed in ImagePullBackOff with "no match for platform in manifest", and kube-prometheus-stack stayed OutOfSync and Degraded while the other 18 Applications were Synced and Healthy; the run's destroy job, which also looks for residue, then passed. 1.3.1's move to kube-prometheus-stack 93.1.0 (`8a5004a`) pinned prometheus-operator and its config reloader v0.95.1, whose image indexes list five manifests each, every one for linux/amd64 (upstream's own report: [prometheus-operator/prometheus-operator#8953](https://github.com/prometheus-operator/prometheus-operator/issues/8953)), and the system nodes are Graviton (arm64). Every check before AWS passed, because every runner is amd64. Now kube-prometheus-stack 93.2.0, with prometheus-operator and the config reloader v0.95.2, whose indexes list linux/amd64, linux/arm64 and three more. The chart also moves its defaults to Alertmanager v0.35.0 and Grafana 13.3.1, pinned by digest with them. Alertmanager v0.35.0 removes `--enable-feature=auto-gomemlimit` and renames eventrecorder outputs; the operator passes `--enable-feature` only from `spec.enableFeatures`, and the platform sets neither. Alertmanager runs on EKS only, so the next scheduled EKS run is the first to run v0.35.0.
