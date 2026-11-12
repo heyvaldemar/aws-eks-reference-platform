@@ -51,6 +51,32 @@ spec:
       destination:
         name: '{{ .name }}'
         namespace: kube-system
+      # The chart makes its webhook CA, certificate and key with genCA on every
+      # render: helm's lookup sees no cluster under Argo CD, so keepTLSSecret
+      # cannot reuse them. A second render, on any manifest cache miss, would
+      # apply a new CA to the webhooks while the controller's pods keep serving
+      # the first certificate, and the Service webhook then rejects every
+      # Service in the cluster: the EKS run of 11 November 2026 started by hand
+      # (43119033426). These keep the pair the first sync made, and
+      # RespectIgnoreDifferences makes a sync keep it too.
+      # scripts/check-render-drift.py fails if a field that changes between two
+      # renders is not held here.
+      ignoreDifferences:
+        - kind: Secret
+          name: aws-load-balancer-tls
+          namespace: kube-system
+          jsonPointers:
+            - /data
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          name: aws-load-balancer-webhook
+          jqPathExpressions:
+            - .webhooks[]?.clientConfig.caBundle
+        - group: admissionregistration.k8s.io
+          kind: ValidatingWebhookConfiguration
+          name: aws-load-balancer-webhook
+          jqPathExpressions:
+            - .webhooks[]?.clientConfig.caBundle
       syncPolicy:
         automated:
           prune: true
@@ -58,6 +84,7 @@ spec:
         syncOptions:
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
         retry:
           limit: 20
           backoff:

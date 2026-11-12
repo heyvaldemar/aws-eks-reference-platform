@@ -18,7 +18,7 @@ What "done" means, agreed before the work starts. Each criterion is a check that
 | 8 | Upgrades do not lose data | the previous release upgraded in place keeps its marker and passes every check | upgrade job | platform lead |
 | 9 | GitOps reads releases | Argo CD resolves a release tag with the credential the cluster holds | e2e 8 | platform lead |
 | 10 | The AWS controls are what they say | access entries only, KMS for Secrets, IMDSv2 with hop limit one, Pod Identity per controller; each of 24 planted violations fails `terraform test` | `make check`, then the validation run of [ADR 10](../decisions/0010-aws-validation-runs.md) on the customer's account | security |
-| 11 | Every static check can fail | each of 30 planted violations in rendered manifests is caught | `make check` | platform lead |
+| 11 | Every static check can fail | each of 33 planted violations in rendered manifests is caught | `make check` | platform lead |
 
 ## Agreed during discovery
 

@@ -6,6 +6,10 @@ resources:
 patches:
   # Two proxies behind an internet-facing Network Load Balancer that sends
   # traffic straight to pod IPs (the AWS Load Balancer Controller makes it).
+  # The Service names the controller's class itself: the controller's Service
+  # webhook, which used to set it, is off (its values file says why). A
+  # Service made while the webhook was on already holds this class, and the
+  # field cannot change, so this value is the only one it can take.
   - target:
       kind: EnvoyProxy
       name: platform
@@ -17,6 +21,7 @@ patches:
         path: /spec/provider/kubernetes/envoyService
         value:
           type: LoadBalancer
+          loadBalancerClass: service.k8s.aws/nlb
           externalTrafficPolicy: Cluster
           annotations:
             service.beta.kubernetes.io/aws-load-balancer-type: external

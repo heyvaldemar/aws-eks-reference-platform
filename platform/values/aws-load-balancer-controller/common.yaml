@@ -9,3 +9,12 @@ tolerations:
     operator: Exists
 nodeSelector:
   platform.heyvaldemar.com/node-group: system
+# The Service webhook sets loadBalancerClass on every LoadBalancer Service that
+# has none, and with failurePolicy Fail it stands in front of every Service
+# create and update in the cluster: when its certificate went stale in the EKS
+# run of 11 November 2026 started by hand (43119033426), no Service could be
+# made, and cert-manager, External Secrets and Kyverno went down with it. The
+# platform's one LoadBalancer Service, the Gateway's, names its class itself
+# (manifests/overlays/eks), so the webhook is off; scripts/check-webhooks.py
+# fails if a rendered webhook fails closed on a whole kind again.
+enableServiceMutatorWebhook: false

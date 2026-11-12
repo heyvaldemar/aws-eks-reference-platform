@@ -7,6 +7,14 @@
 #                 on kind; on EKS the system AMI's and every architecture the
 #                 Karpenter NodePools allow (check-platforms.py, asks the
 #                 registries)
+#   render-drift  every field a chart makes anew on each render (a generated
+#                 CA, certificate or key) held by its Application's
+#                 ignoreDifferences with RespectIgnoreDifferences, so a second
+#                 render cannot reach the cluster (check-render-drift.py,
+#                 renders each environment again)
+#   webhooks      no rendered webhook fails closed on a whole kind (every
+#                 Service, Pod, Secret...) unless objects opt in
+#                 (check-webhooks.py)
 #   kubeconform   every object valid for Kubernetes 1.37, custom resources
 #                 against the CRDs the platform itself installs, strictly
 #   kube-linter   the manifests this repository authors (.kube-linter.yaml)
@@ -56,6 +64,16 @@ check_images() { python3 scripts/check-images.py "${ENVS[@]/#/out/}"; }
 check_platforms() {
   python3 scripts/check-platforms.py selftest || return 1
   python3 scripts/check-platforms.py "${ENVS[@]/#/out/}"
+}
+
+check_render_drift() {
+  python3 scripts/check-render-drift.py selftest || return 1
+  python3 scripts/check-render-drift.py "${ENVS[@]/#/out/}"
+}
+
+check_webhooks() {
+  python3 scripts/check-webhooks.py selftest || return 1
+  python3 scripts/check-webhooks.py "${ENVS[@]/#/out/}"
 }
 
 check_kubeconform() {
@@ -138,7 +156,7 @@ PY
   promtool test rules tests/slo/*.test.yaml
 }
 
-all=(render images platforms kubeconform kube-linter pluto argocd argocd-health policy-tests kyverno promtool)
+all=(render images platforms render-drift webhooks kubeconform kube-linter pluto argocd argocd-health policy-tests kyverno promtool)
 selected=("$@")
 [ ${#selected[@]} -eq 0 ] && selected=("${all[@]}")
 if [ ! -d out/kind ] && [[ " ${selected[*]} " != *" render "* ]]; then
