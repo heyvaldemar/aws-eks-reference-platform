@@ -1,6 +1,6 @@
 # The policies are CEL ValidatingPolicy and GeneratingPolicy objects
-# (policies.kyverno.io/v1). Kyverno 1.19 marks the older kyverno.io
-# ClusterPolicy deprecated; nothing here uses it.
+# (policies.kyverno.io/v1). Kyverno 1.20 no longer runs the older
+# kyverno.io ClusterPolicy; nothing here uses it.
 # Replica counts are set even where they equal the chart's default: a field
 # the chart leaves out is a field Argo CD does not own, and a `kubectl scale`
 # to zero would not count as drift. tests/e2e scales the admission controller

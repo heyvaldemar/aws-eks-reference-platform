@@ -1,0 +1,28 @@
+# A policy whose ValidatingAdmissionPolicy was generated, as Kyverno 1.20
+# writes it: WebhookConfigured=True with the message
+# pkg/controllers/policystatus/controller.go sets since commit d633c49a9a65,
+# the fix for kyverno/kyverno#17088 that 1.19.2 lacked. Argo CD's own check
+# calls it Healthy, with no override.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-image-digest
+  generation: 1
+  annotations:
+    reference-platform.test/expect-health: Healthy
+    reference-platform.test/expect-message: generated ValidatingAdmissionPolicy
+status:
+  autogen: {}
+  conditionStatus:
+    conditions:
+      - message: Admission is enforced by the generated ValidatingAdmissionPolicy.
+        reason: Succeeded
+        status: "True"
+        type: WebhookConfigured
+      - message: Policy is ready for reporting.
+        reason: Succeeded
+        status: "True"
+        type: RBACPermissionsGranted
+    message: ""
+    ready: true
+  generated: true

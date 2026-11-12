@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Kyverno 1.20.0, chart 3.10.0, from 1.19.2 and chart 3.9.2. The chart is pinned to the sha256 of the archive Kyverno's release publishes, which its release workflow signs; the seven images are pinned by digest, and the CLI in `tools.lock` matches the release's signed checksums. 1.20 no longer runs the older `kyverno.io` policies, and the platform has none. Chart 3.10 adds a hook that checks for them before an install or upgrade, `upgrade.legacyPolicyCheck`; it runs the CLI image, pinned like the others.
+
+### Removed
+
+- The ValidatingPolicy health override added in 1.3.2. Kyverno 1.20 carries the fix, commit [d633c49](https://github.com/kyverno/kyverno/commit/d633c49a9a65): a policy whose ValidatingAdmissionPolicy was generated is marked `WebhookConfigured=True`, "Admission is enforced by the generated ValidatingAdmissionPolicy.", and Argo CD's own check calls it Healthy. The fixture that expected Healthy from the override now holds that status, and the override's three plants give way to one, a health override that calls every ValidatingPolicy Healthy.
+
 ## [1.3.4] - 2026-11-12
 
 A patch release for one defect in every release so far, found on AWS: an EKS install could lose every Service in the cluster to the AWS Load Balancer Controller's webhook certificate, which its chart makes anew on every render. On AWS nothing in this release has run yet.

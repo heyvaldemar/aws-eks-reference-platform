@@ -1,6 +1,5 @@
 # A generated VAP does not excuse any other condition: the reports controller
-# missing its permissions is still Degraded, and the message names it, not
-# the WebhookConfigured condition ahead of it.
+# missing its permissions is still Degraded, and the message names it.
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
@@ -12,9 +11,9 @@ metadata:
 status:
   conditionStatus:
     conditions:
-      - message: Policy is not configured in the webhook.
-        reason: Failed
-        status: "False"
+      - message: Admission is enforced by the generated ValidatingAdmissionPolicy.
+        reason: Succeeded
+        status: "True"
         type: WebhookConfigured
       - message: "Policy is not ready for reporting, missing permissions: list apps/v1, Resource=deployments."
         reason: Failed
