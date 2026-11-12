@@ -53,6 +53,8 @@ Everything is pinned, and each pin has its place:
 
 To move a chart, follow `docs/runbooks/upgrade.md`: render with `RENDER_CHART_DEFAULT_IMAGES=1` to see what the new chart pulls, and pin every image found by digest. The Kubernetes version moves in all its places at once: `KUBE_VERSION` in `scripts/validate.sh` and `scripts/render.py`, the node image in `kind/cluster.yaml`, `kubectl` in `tools.lock`, `kubernetes_version` in `terraform/variables.tf` and its assertion in `terraform/tests/posture.tftest.hcl`. Dependabot moves the Actions, the provider, the Python package and the Go modules; `scripts/check-freshness.py` reports every other pin weekly and changes nothing.
 
+A pin moved by hand waits until its upstream release, or the rebuild of its image, is three days old, and its checksum or digest is compared with the one its publisher lists before it is moved. In those three days the freshness check is red on that pin, and that is expected.
+
 ## Numbers
 
 The badges are written by `.github/workflows/status.yml` to the `status` branch from the runs on main; nothing there is typed by hand. A number in the README, a decision record or a release is copied from the log or artifact of the run it names (the README names run 38695231460 on `7040995` for its EKS figures), never from memory or an earlier draft: `bd290e4` corrected three that were not. A count of plants is the row count of its `plants.tsv` and changes in the same commit. A cost from list prices says it is an estimate, as the README's table and `scripts/aws-cost-report.py` do. When runs disagree, find what changed (the runner, a pin, an upstream registry) before calling it noise. A gate is never loosened to get a run green.

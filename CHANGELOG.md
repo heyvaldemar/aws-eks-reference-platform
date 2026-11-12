@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- kube-prometheus-stack 93.2.0 to 93.2.2, released on 11 November 2026: the kube-state-metrics subchart 9.0.0 to 9.0.1, its image unchanged (v2.20.0, the same digest), and a default `pathType` (`ImplementationSpecific`) in the per-replica and Thanos sidecar Ingress templates, which the platform does not render. In the rendered manifests only the chart and version labels change. The chart's sha256 matches the one in the publisher's index and release. It moved once it was three days old.
+- `AGENTS.md`: a pin moved by hand waits until its upstream release is three days old, and its checksum or digest is compared with the publisher's first.
+
 ### Fixed
 
 - What a run costs: the README and ADR 10 said only what a run's teardown estimated, about $0.14 to $0.21 for a passing run. On the AWS bill a passing run costs about $0.50: $0.47 and $0.51 before credits on 28 October and 4 November 2026, the two days a passing scheduled run was all that ran in the account, against estimates of $0.16, as the sweeper read them the next day; Cost Explorer can still add to a day after that, so these are floors. The estimate leaves out NAT gateway data processing and data transfer. The README also says the account holds two other repositories' validation runs, as ADR 10 records since 21 and 29 October.
