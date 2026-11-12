@@ -11,6 +11,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Held with the provider below, for the same run: the EKS workflow's
+    # aws-actions/configure-aws-credentials runs nowhere but on AWS.
+    # Security updates are not held by this line.
+    open-pull-requests-limit: 0
     groups:
       github-actions:
         patterns: ["*"]
@@ -20,6 +24,13 @@ updates:
     directory: /terraform
     schedule:
       interval: weekly
+    # HELD UNTIL THE SCHEDULED EKS RUN OF 18 NOVEMBER 2026 HAS ENDED. That run
+    # is the first on AWS for 1.3.4's load balancer controller fix, and the
+    # provider is what only an AWS run tests: kind never runs Terraform against
+    # AWS. hashicorp/aws 6.73.0 moves after it, so a red run has one cause.
+    # Remove this line then; Dependabot checks again when this file changes,
+    # and the freshness check reports the provider behind until it moves.
+    open-pull-requests-limit: 0
     groups:
       terraform:
         patterns: ["*"]
