@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- What a run costs: the README and ADR 10 said only what a run's teardown estimated, about $0.14 to $0.21 for a passing run. On the AWS bill a passing run costs about $0.50: $0.47 and $0.51 before credits on 28 October and 4 November 2026, the two days a passing scheduled run was all that ran in the account, against estimates of $0.16. The estimate leaves out NAT gateway data processing and data transfer. The README also says the account holds two other repositories' validation runs, as ADR 10 records since 21 and 29 October.
+
 ## [1.3.4] - 2026-11-12
 
 A patch release for one defect in every release so far, found on AWS: an EKS install could lose every Service in the cluster to the AWS Load Balancer Controller's webhook certificate, which its chart makes anew on every render. On AWS it first ran by hand on 12 November 2026 ([run 43268704872](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/43268704872)) and passed. *(Updated on 2026-11-12.)*

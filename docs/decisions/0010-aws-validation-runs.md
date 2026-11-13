@@ -71,6 +71,10 @@ The maintainer said yes to the air-gapped agent (`heyvaldemar/kubernetes-air-gap
 
 The maintainer said yes to an inference reference (`heyvaldemar/kubernetes-llm-inference-gateway`) serving a model on a GPU node weekly, under the budget he set for it, in this account. It joins `also_create` on the same terms as the air-gapped agent: the creation role in the `aws-validation` environment, the same guardrails, permissions boundary, budgets and kill-switch, and no delete-only role of its own. The account's GPU quota (8 vCPU of G and VT instances) was raised for the air-gapped agent on 2026-10-22 and is shared. The bootstrap's tests check the trust holds exactly the three subjects.
 
+## The bill, 2026-11-13
+
+A run's cost report is an estimate, made at its end from resource-hours and list prices; the sweeper's report of the next day is the account's bill, every repository's in it together. On the two days a passing scheduled run of this repository was all that ran in the account, 28 October and 4 November 2026, the bill for the day, before credits, was $0.47 and $0.51, against estimates of $0.16. Most of the difference is the bill's "EC2 - Other" line ($0.36 and $0.39), where AWS bills NAT gateway data processing and data transfer, which the estimate leaves out. A passing run costs about $0.50; the estimate stays as the run's own report, made before the bill exists.
+
 ## How to explain this to a customer
 
-Real cloud tests run once a week and when a person starts them, in an account that exists for nothing else, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.
+Real cloud tests run once a week and when a person starts them, in an account that exists for nothing but such tests, with a spending cap that switches off the ability to create anything once it is reached. Every test cleans up after itself, a separate job deletes anything a failed test left behind within three hours, and every run reports what it cost. You would set up the same guards before letting any automation spend in your account.
