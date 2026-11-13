@@ -46,7 +46,7 @@ The maintainer said yes on 2026-10-14. What exists, all of it checkable without 
 
 - `terraform/bootstrap-aws/`: the OIDC provider, the two roles each trusted for one GitHub environment, guardrails on both, a permissions boundary every role a run creates must carry (without it, a role with AdministratorAccess escapes any deny by creating another role), the state bucket, a persistent validation zone delegated once, the budgets and the kill-switch. Its `terraform test` and ten planted violations run in Verification.
 - `.github/workflows/eks-validation.yml`: guards 1 to 5, with the run's state and variables in the bucket and `tests/eks/run.sh` as the check. The cleanup of what controllers made runs from the job that created the cluster, whose address the API allows; if that job dies first, the teardown adds its own address and does the same. The environment is limited to `main` rather than to a reviewer, because the teardown runs in it and must not wait for a person.
-- `.github/workflows/eks-sweeper.yml`: guard 6, daily, with yesterday's bill in its summary, which is the day-later reconciliation of guard 5 until the run-id cost allocation tag is active.
+- `.github/workflows/eks-sweeper.yml`: guard 6, daily, with yesterday's bill in its summary, which is the day-later reconciliation of guard 5 until the run-id cost allocation tag is active, and the last 30 days as the bill stands when it runs, since Cost Explorer can still add to a day after the sweeper first reads it.
 
 The account came on 2026-10-14, the first passing run on 2026-10-15 (below).
 
@@ -73,7 +73,7 @@ The maintainer said yes to an inference reference (`heyvaldemar/kubernetes-llm-i
 
 ## The bill, 2026-11-13
 
-A run's cost report is an estimate, made at its end from resource-hours and list prices; the sweeper's report of the next day is the account's bill, every repository's in it together. On the two days a passing scheduled run of this repository was all that ran in the account, 28 October and 4 November 2026, the bill for the day, before credits, was $0.47 and $0.51, against estimates of $0.16. Most of the difference is the bill's "EC2 - Other" line ($0.36 and $0.39), where AWS bills NAT gateway data processing and data transfer, which the estimate leaves out. A passing run costs about $0.50; the estimate stays as the run's own report, made before the bill exists.
+A run's cost report is an estimate, made at its end from resource-hours and list prices; the sweeper's report of the next day is the account's bill, every repository's in it together. On the two days a passing scheduled run of this repository was all that ran in the account, 28 October and 4 November 2026, the bill for the day, before credits and as the sweeper read it the next day, was $0.47 and $0.51, against estimates of $0.16. Most of the difference is the bill's "EC2 - Other" line ($0.36 and $0.39), where AWS bills NAT gateway data processing and data transfer, which the estimate leaves out. Cost Explorer can still add to a day after that reading (on 1 November it showed none of the inference gateway's GPU instance hours), so these are floors: a passing run costs about $0.50 or more. The sweeper's summary also holds the last 30 days as the bill stands when it runs, and "EC2 - Other" by usage type, which is where a settled number comes from. The estimate stays as the run's own report, made before the bill exists.
 
 ## How to explain this to a customer
 

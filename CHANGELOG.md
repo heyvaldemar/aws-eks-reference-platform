@@ -6,7 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
-- What a run costs: the README and ADR 10 said only what a run's teardown estimated, about $0.14 to $0.21 for a passing run. On the AWS bill a passing run costs about $0.50: $0.47 and $0.51 before credits on 28 October and 4 November 2026, the two days a passing scheduled run was all that ran in the account, against estimates of $0.16. The estimate leaves out NAT gateway data processing and data transfer. The README also says the account holds two other repositories' validation runs, as ADR 10 records since 21 and 29 October.
+- What a run costs: the README and ADR 10 said only what a run's teardown estimated, about $0.14 to $0.21 for a passing run. On the AWS bill a passing run costs about $0.50: $0.47 and $0.51 before credits on 28 October and 4 November 2026, the two days a passing scheduled run was all that ran in the account, against estimates of $0.16, as the sweeper read them the next day; Cost Explorer can still add to a day after that, so these are floors. The estimate leaves out NAT gateway data processing and data transfer. The README also says the account holds two other repositories' validation runs, as ADR 10 records since 21 and 29 October.
+- The sweeper's summary also gives the last 30 days of the bill as Cost Explorer holds it when the sweeper runs, and what "EC2 - Other" was made of by usage type on the days it passed $0.05 (`scripts/aws-bill-days.py`, two read-only requests). The day-old reading can be incomplete: on 1 November it showed none of the inference gateway's GPU instance hours.
 
 ## [1.3.4] - 2026-11-12
 

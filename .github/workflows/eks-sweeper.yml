@@ -73,3 +73,10 @@ jobs:
               --query 'ResultsByTime[0].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' --output text |
               awk -F'\t' '$2 > 0.005 {printf "| %s | $%.2f |\n", $1, $2; t += $2} END {printf "| **Total** | **$%.2f** |\n", t}'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Cost Explorer can still add to a day after the step above read it, so
+      # the last 30 days again as the bill stands now, and what "EC2 - Other"
+      # was made of: two requests at $0.01 each. Reads only.
+      - name: The last 30 days, as the bill stands now
+        if: always()
+        run: python3 scripts/aws-bill-days.py 30 >> "$GITHUB_STEP_SUMMARY"
