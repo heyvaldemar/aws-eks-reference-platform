@@ -2,8 +2,9 @@ name: Status
 
 # Writes what the e2e workflow has shown lately (scripts/status.py) to the
 # branch `status`, where the README's badges and the fleet read it: green
-# days in the last 30, the streak, and the latest run's checks and
-# measurements. After every e2e run on main, and daily in case one was
+# days in the last 30, the streak, the scheduled runs that passed in a row,
+# and the latest run's checks and measurements. After every e2e run on main,
+# and daily in case one was
 # missed. The branch holds one commit, replaced each time, so main's history
 # stays the code's and nothing here starts the e2e run again.
 on:
@@ -37,6 +38,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # The scheduled counts a cadence word rests on, shown first the runs
+      # they exist for, so a broken count is never written.
+      - name: The scheduled counts, shown the runs they exist for
+        run: python3 scripts/status.py selftest
 
       - name: Read the e2e runs
         env:

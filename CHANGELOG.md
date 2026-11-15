@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- The `status` branch counts the scheduled runs apart, in `status.json` and `eks/status.json`: `scheduled_runs` and `scheduled_passed` in the 30-day window, and `scheduled_streak`, the scheduled runs that passed in a row back from the latest one. A run started by hand neither counts there nor breaks the row; a scheduled run that failed, was cancelled, timed out or was skipped by its gate breaks it. A cadence word rests on that row: heyvaldemar.com says "weekly" of the EKS run when it is two or more. On 15 November 2026 the EKS counts are 4 scheduled runs, 3 passed and 0 in a row, the scheduled run of 11 November being red. `latest` also names the event that started the run. `scripts/status.py selftest`, run by Verification and before every status write, shows the counts the runs they exist for.
+
 ### Changed
 
 - `scripts/check-freshness.py` is the fleet's one copy of the freshness check, fleet-ops `templates/check-freshness.py`, and what this repository pins is listed in `freshness.json`. A release younger than three days is now a warning that names the moment it becomes a failure: the release-age rule keeps such a version off main anyway, and every upstream release used to turn the check red for three days nobody was allowed to act on. A release whose date cannot be read still fails, and so does a tag that moved to a new digest.

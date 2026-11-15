@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""status.py OUT_DIR - what the e2e workflow has shown lately, as JSON a page
-or a badge can read.
+"""status.py OUT_DIR | selftest - what the e2e workflow has shown lately, as
+JSON a page or a badge can read.
 
     GITHUB_REPOSITORY=owner/name GITHUB_TOKEN=... E2E_WORKFLOW=e2e.yml \\
         scripts/status.py out/status
@@ -18,8 +18,19 @@ when E2E_RESULTS is set). Writes:
 
 A day counts as green when its last finished run passed; the run count beside
 it shows the failures that rule hides. The streak counts green days back from
-the latest day that had a run. Nothing here is typed
-by hand: every number is read from GitHub at the time it is written.
+the latest day that had a run.
+
+A cadence word ("weekly", "daily") rests on the scheduled runs alone, never
+on a run started by hand: status.json also counts the scheduled runs in the
+window, how many passed, and how many passed in a row back from the latest
+one (scheduled_runs, scheduled_passed, scheduled_streak). A run started by
+hand neither counts there nor breaks the row. A scheduled run that did not
+pass breaks it whatever its end: failed, cancelled, timed out, or skipped
+because the schedule's gate was off. `selftest` shows these counts the runs
+they exist for, without GitHub.
+
+Nothing here is typed by hand: every number is read from GitHub at the time
+it is written.
 """
 import datetime
 import io
@@ -87,6 +98,64 @@ def results(repo, run_id):
     return merged
 
 
+def scheduled_counts(listed):
+    """The scheduled runs among the completed runs listed: how many ran, how
+    many passed, and how many passed in a row back from the latest scheduled
+    one. A skipped run (the gate was off) is not counted as a run, and it
+    still breaks the row: the schedule did not prove anything that week."""
+    scheduled = sorted((r for r in listed if r["event"] == "schedule" and r["status"] == "completed"),
+                       key=lambda r: r["created_at"])
+    in_a_row = 0
+    for r in reversed(scheduled):
+        if r["conclusion"] != "success":
+            break
+        in_a_row += 1
+    ran = [r for r in scheduled if r["conclusion"] != "skipped"]
+    return {"scheduled_runs": len(ran),
+            "scheduled_passed": sum(1 for r in ran if r["conclusion"] == "success"),
+            "scheduled_streak": in_a_row}
+
+
+def selftest():
+    def run(day, event, conclusion, status="completed"):
+        return {"event": event, "status": status, "conclusion": conclusion, "created_at": f"2026-{day}T06:00:00Z"}
+
+    def counts(*listed):
+        c = scheduled_counts(list(listed))
+        return c["scheduled_runs"], c["scheduled_passed"], c["scheduled_streak"]
+
+    # This repository's EKS runs as they stood on 15 November 2026: three
+    # scheduled passes, the scheduled run of 11 November red, then two runs
+    # started by hand, the second green.
+    history = [run("10-21", "schedule", "success"), run("10-28", "schedule", "success"),
+               run("11-04", "schedule", "success"), run("11-11", "schedule", "failure"),
+               run("11-11", "workflow_dispatch", "failure"), run("11-12", "workflow_dispatch", "success")]
+    assert counts(*history) == (4, 3, 0), counts(*history)
+    assert counts(run("11-11", "schedule", "failure")) == (1, 0, 0)
+    two = (run("11-18", "schedule", "success"), run("11-25", "schedule", "success"))
+    assert counts(*history, two[0]) == (5, 4, 1), counts(*history, two[0])
+    assert counts(*history, *two) == (6, 5, 2), counts(*history, *two)
+    # A run started by hand between two green scheduled runs, green or red,
+    # changes nothing.
+    for c in ("success", "failure"):
+        assert counts(two[0], run("11-20", "workflow_dispatch", c), two[1]) == (2, 2, 2), c
+    # Listed newest first, as the API lists them: the row is still counted back
+    # from the latest.
+    assert counts(two[1], two[0], run("11-11", "schedule", "failure")) == (3, 2, 2)
+    # A scheduled run that ended any other way than a pass breaks the row.
+    for c in ("cancelled", "timed_out", "startup_failure"):
+        assert counts(two[0], run("11-20", "schedule", c), two[1]) == (3, 2, 1), c
+    # The gate off: not a run, and still the end of the row.
+    assert counts(two[0], run("11-20", "schedule", "skipped"), two[1]) == (2, 2, 1)
+    # A run still in progress is not counted yet; a push is never scheduled.
+    assert counts(*two, run("11-26", "schedule", None, status="in_progress"),
+                  run("11-26", "push", "failure")) == (2, 2, 2)
+    assert counts() == (0, 0, 0)
+    print("selftest: ok (a red scheduled run gives 0, two green ones give 2, a run by hand changes nothing, "
+          "a cancelled, timed-out or skipped scheduled run breaks the row, a push is never scheduled)")
+    return 0
+
+
 def badge(label, message, color):
     return {"schemaVersion": 1, "label": label, "message": message, "color": color}
 
@@ -95,7 +164,8 @@ def main(out):
     repo, workflow = os.environ["GITHUB_REPOSITORY"], os.environ["E2E_WORKFLOW"]
     now = datetime.datetime.now(datetime.timezone.utc)
     since = (now - datetime.timedelta(days=WINDOW_DAYS - 1)).date()
-    finished = [r for r in runs(repo, workflow, since)
+    listed = runs(repo, workflow, since)
+    finished = [r for r in listed
                 if r["event"] in ("push", "schedule", "workflow_dispatch")
                 and r["status"] == "completed" and r["conclusion"] in ("success", "failure")]
     finished.sort(key=lambda r: r["created_at"])
@@ -126,9 +196,11 @@ def main(out):
         "green_days": len(green),
         "streak_days": streak,
         "runs": len(finished),
-    "runs_passed": sum(1 for r in finished if r["conclusion"] == "success"),
+        "runs_passed": sum(1 for r in finished if r["conclusion"] == "success"),
+        **scheduled_counts(listed),
         "latest": None if not latest else {
             "conclusion": latest["conclusion"],
+            "event": latest["event"],
             "at": latest["created_at"],
             "url": latest["html_url"],
             "commit": latest["head_sha"][:7],
@@ -161,10 +233,14 @@ def main(out):
             slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
             json.dump(badge(name, value.split(" (")[0], "blue"), open(os.path.join(out, f"badge-{slug}.json"), "w"))
     print(f"{repo}: {len(green)} of {len(days)} days green, streak {streak}, "
+          f"scheduled {status['scheduled_passed']} of {status['scheduled_runs']}, "
+          f"{status['scheduled_streak']} in a row, "
           f"latest {latest['conclusion'] if latest else 'none'} with {passed} of {passed + failed} checks")
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
+    if sys.argv[1] == "selftest":
+        sys.exit(selftest())
     main(sys.argv[1])
