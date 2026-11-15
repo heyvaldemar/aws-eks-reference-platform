@@ -1,0 +1,15 @@
+{
+  "checks": ["appset_charts", "images", "chart_images", "tools", "ci_images", "kubernetes", "terraform_lock"],
+  "appsets": "platform/appsets/*.yaml",
+  "image_paths": [
+    "platform/values/*/images.yaml",
+    "apps/**/*.yaml",
+    "manifests/**/*.yaml",
+    "tests/e2e/**/*.yaml",
+    "tests/e2e/*.sh"
+  ],
+  "image_values": "yaml",
+  "render": {"script": "scripts/render.py", "envs": ["kind", "eks"]},
+  "kubernetes": {"target": "scripts/validate.sh", "kind_node": "kind/cluster.yaml", "terraform": "terraform/variables.tf"},
+  "terraform_locks": ["terraform/.terraform.lock.hcl"]
+}

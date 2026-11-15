@@ -12,7 +12,7 @@ A tag is a name that can be moved to different bytes after the image was reviewe
 - Each add-on has a `platform/values/<add-on>/images.yaml` that overrides every image the chart would run with `tag@sha256:` or the chart's digest field, including images passed as flags (the Prometheus operator's config reloader and Thanos sidecar, cert-manager's ACME solver).
 - `scripts/check-images.py` scans every string of every rendered object, not only `image:` fields, and fails on any reference without a digest. The e2e suite checks every running pod as well.
 - `tools.lock` pins each CLI tool by version and sha256 per platform; `ci-images.pins` pins CI containers by digest; GitHub Actions are pinned by commit SHA.
-- `scripts/check-freshness.py` runs weekly and reports, without changing anything: a chart with a newer version, a tag that now points at different bytes, a tool or provider behind its latest release, and a chart whose default image moved ahead of the pin in `images.yaml`.
+- `scripts/check-freshness.py` runs weekly and reports, without changing anything: a chart with a newer version, a tag that now points at different bytes, a tool or provider behind its latest release, and a chart whose default image moved ahead of the pin in `images.yaml`. A release younger than three days is a warning that names the moment it becomes a failure, by the release-age rule in `AGENTS.md`; three days or older, of unknown age, or a tag that now points at another digest, it fails.
 
 ## Consequences
 
