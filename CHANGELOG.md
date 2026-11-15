@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - kube-prometheus-stack 93.2.0 to 93.2.2, released on 11 November 2026: the kube-state-metrics subchart 9.0.0 to 9.0.1, its image unchanged (v2.20.0, the same digest), and a default `pathType` (`ImplementationSpecific`) in the per-replica and Thanos sidecar Ingress templates, which the platform does not render. In the rendered manifests only the chart and version labels change. The chart's sha256 matches the one in the publisher's index and release. It moved once it was three days old.
 - `AGENTS.md`: a pin moved by hand waits until its upstream release is three days old, and its checksum or digest is compared with the publisher's first.
+- `scripts/wait-for-platform.sh`: when it times out it also names each pending Application's resources that are not Healthy, with Argo CD's health message. On 15 November 2026 the kind install of the previous release timed out with kube-prometheus-stack Progressing, and its report did not say which resource it waited on.
 
 ### Fixed
 
