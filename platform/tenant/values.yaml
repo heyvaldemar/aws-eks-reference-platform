@@ -41,8 +41,10 @@ reserved:
 # as (resource), so the API server refuses what Argo CD would. An allow-list,
 # not a deny-list: a kind nobody thought of is refused until someone adds it
 # here in a platform change. Left out on purpose: Role and RoleBinding (a
-# team that could bind itself admin in its namespace could edit the quota
-# through the API), Secret (secrets come from the store), SecretStore,
+# team that could bind itself admin in its namespace could go around this
+# list through the API: admin reads and writes Secrets and makes Roles and
+# RoleBindings; it cannot write the quota, cluster-admin bound there could),
+# Secret (secrets come from the store), SecretStore,
 # ResourceQuota and LimitRange, Kyverno policies and exceptions, and Gateway
 # (a Gateway of its own gets its own load balancer).
 allowedKinds:
