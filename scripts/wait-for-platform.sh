@@ -11,7 +11,7 @@
 # ROOT_GRACE seconds (sync status Unknown: Argo CD could not fetch or render
 # it), since nothing below it can appear. Either way it ends by printing
 # each pending Application's conditions, which is where Argo CD says why,
-# and the resources in it that are not Healthy, which is what it waits on.
+# and the resources in it that say what it waits on (scripts/pending-resources.py).
 set -euo pipefail
 TIMEOUT="${1:-1200}"
 ROOT_GRACE="${ROOT_GRACE:-600}"
@@ -25,11 +25,10 @@ conditions() {   # conditions <app>...: what Argo CD says about each
     kubectl -n argocd get applications.argoproj.io "$app" \
       -o jsonpath='{range .status.conditions[*]}{"  "}{.type}{": "}{.message}{"\n"}{end}' 2>/dev/null \
       | sed "s/^/  $app /" >&2 || true
-    # Kind, namespace/name, health and its message; a resource with no health
-    # (a ConfigMap, a CRD) has nothing to wait on and is left out.
-    kubectl -n argocd get applications.argoproj.io "$app" \
-      -o jsonpath='{range .status.resources[*]}{.kind}{" "}{.namespace}{"/"}{.name}{" "}{.health.status}{" "}{.health.message}{"\n"}{end}' 2>/dev/null \
-      | awk '$3 != "" && $3 != "Healthy"' | sed "s/^/  $app /" >&2 || true
+    # Its resources that say why: out of sync, or a readiness condition not
+    # True, read from each resource itself. Argo CD 3 does not keep resource
+    # health in the Application, so .status.resources alone says nothing.
+    python3 "$(dirname "$0")/pending-resources.py" "$app" 2>/dev/null | sed "s/^/  $app /" >&2 || true
   done
 }
 while :; do

@@ -53,6 +53,11 @@ jobs:
       - name: The status branch's scheduled counts, shown the runs they exist for
         run: python3 scripts/status.py selftest
 
+      # What a timed-out wait prints about each pending Application's
+      # resources (scripts/pending-resources.py, from wait-for-platform.sh).
+      - name: The wait's report on pending resources, shown the cases it exists for
+        run: python3 scripts/pending-resources.py selftest
+
   kubectl-tenant:
     name: kubectl-tenant, and that it makes the tenant made by hand
     runs-on: ubuntu-latest
