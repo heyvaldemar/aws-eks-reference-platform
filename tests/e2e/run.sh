@@ -430,13 +430,31 @@ fi
 
 step "6b. the SLO: rules loaded, dashboard present, and the page fires on a failure"
 promapi() { kubectl get --raw "/api/v1/namespaces/monitoring/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/$1" 2>/dev/null; }
-bad_rules="$(promapi rules | python3 -c '
+# A rule Prometheus has loaded but not yet evaluated reports health "unknown",
+# and the rules are evaluated every 30 s. On 22 November 2026 (kind e2e
+# 44984126527) this step read all eight that way seconds after step 6, and the
+# page fired on the same rules three minutes later. So it waits, up to 120 s,
+# until all eight are loaded and each has been evaluated once, and only then
+# judges: all eight "ok" passes; one "err" fails, with Prometheus' message.
+slo_rules() {  # count, ok, not yet evaluated, failing, the first error
+  promapi rules | python3 -c '
 import json,sys
 groups=[g for g in json.load(sys.stdin)["data"]["groups"] if g["name"].startswith("demo-slo")]
 rules=[r for g in groups for r in g["rules"]]
-print(len(rules), sum(1 for r in rules if r.get("health")!="ok"))' 2>/dev/null)"
-if [ "${bad_rules:-0 0}" = "8 0" ]; then pass "Prometheus evaluates all 8 SLO rules without errors"; else
-  fail "SLO rules loaded and failing (count, unhealthy): '${bad_rules:-none}'"; fi
+health=[r.get("health") for r in rules]
+error=next((r.get("lastError") or "" for r in rules if r.get("health")=="err"), "")
+print(len(rules), health.count("ok"), health.count("unknown"), health.count("err"), " ".join(error.split())[:200])' 2>/dev/null
+}
+slo_state=""
+for _ in $(seq 1 24); do
+  slo_state="$(slo_rules)"
+  read -r n_rules _ n_unknown _ <<<"${slo_state:-0 0 0 0}"
+  [ "$n_rules" = 8 ] && [ "$n_unknown" = 0 ] && break
+  sleep 5
+done
+read -r n_rules n_ok n_unknown n_err slo_error <<<"${slo_state:-0 0 0 0}"
+if [ "$n_rules" = 8 ] && [ "$n_ok" = 8 ]; then pass "Prometheus evaluates all 8 SLO rules without errors"; else
+  fail "SLO rules after up to 120 s (count, ok, not yet evaluated, failing): '$n_rules $n_ok $n_unknown $n_err'${slo_error:+: $slo_error}"; fi
 
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 23000:80 >"$WORK/grafana-pf.log" 2>&1 &
 GF_PID=$!
