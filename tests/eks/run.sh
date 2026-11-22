@@ -124,9 +124,11 @@ phase=""
 backup_done() { phase="$(kubectl -n velero get backup "$backup" -o jsonpath='{.status.phase}' 2>/dev/null)"; [ "$phase" = Completed ] || [ "$phase" = Failed ] || [ "$phase" = PartiallyFailed ]; }
 until_true 900 backup_done
 if [ "$phase" = Completed ]; then
+  # The bucket's name ends in the AWS account's id, and these lines reach the
+  # public job summary and the status branch: they name the bucket by its role.
   objects="$(aws s3 ls "s3://$VELERO_BUCKET/" --recursive 2>/dev/null | grep -c "$backup" || true)"
-  if [ "${objects:-0}" -gt 0 ]; then pass "backup $backup Completed, $objects objects in $VELERO_BUCKET"; else
-    fail "backup $backup says Completed but nothing named for it is in $VELERO_BUCKET"; fi
+  if [ "${objects:-0}" -gt 0 ]; then pass "backup $backup Completed, $objects objects in the run's Velero bucket"; else
+    fail "backup $backup says Completed but nothing named for it is in the run's Velero bucket"; fi
 else
   fail "backup $backup ended ${phase:-without a phase}: $(kubectl -n velero get backup "$backup" -o jsonpath='{.status}' 2>&1 | head -c 300)"
 fi
