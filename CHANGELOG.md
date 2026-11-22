@@ -10,11 +10,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Kyverno 1.20.0, chart 3.10.0, from 1.19.2 and chart 3.9.2. The chart is pinned to the sha256 of the archive Kyverno's release publishes, which its release workflow signs; the seven images are pinned by digest, and the CLI in `tools.lock` matches the release's signed checksums. 1.20 no longer runs the older `kyverno.io` policies, and the platform has none. Chart 3.10 adds a hook that checks for them before an install or upgrade, `upgrade.legacyPolicyCheck`; it runs the CLI image, pinned like the others. The release is of 12 November 2026 at 09:32 UTC; the pins moved after the scheduled EKS validation run of 18 November ([44267765979](https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/44267765979)), the last on 1.19.2, so that run and the next measure one version each.
 - `scripts/check-freshness.py` is the fleet's one copy of the freshness check, fleet-ops `templates/check-freshness.py`, and what this repository pins is listed in `freshness.json`. A release younger than three days is now a warning that names the moment it becomes a failure: the release-age rule keeps such a version off main anyway, and every upstream release used to turn the check red for three days nobody was allowed to act on. A release whose date cannot be read still fails, and so does a tag that moved to a new digest.
 - kube-prometheus-stack 93.2.0 to 93.2.2, released on 11 November 2026: the kube-state-metrics subchart 9.0.0 to 9.0.1, its image unchanged (v2.20.0, the same digest), and a default `pathType` (`ImplementationSpecific`) in the per-replica and Thanos sidecar Ingress templates, which the platform does not render. In the rendered manifests only the chart and version labels change. The chart's sha256 matches the one in the publisher's index and release. It moved once it was three days old.
 - helm v4.3.1 to v4.3.2 (`tools.lock`), released on 13 November 2026, a patch release; both archives' sha256 compared with the `.sha256sum` files on get.helm.sh. The bootstrap and the EKS run use it, so the scheduled run of 18 November is its first on AWS.
 - `AGENTS.md`: a pin moved by hand waits until its upstream release is three days old, and its checksum or digest is compared with the publisher's first.
 - `scripts/wait-for-platform.sh`: when it times out it also names each pending Application's resources that are not Healthy, with Argo CD's health message. On 15 November 2026 the kind install of the previous release timed out with kube-prometheus-stack Progressing, and its report did not say which resource it waited on.
+
+### Removed
+
+- The ValidatingPolicy health override added in 1.3.2. Kyverno 1.20 carries the fix, commit [d633c49](https://github.com/kyverno/kyverno/commit/d633c49a9a65): a policy whose ValidatingAdmissionPolicy was generated is marked `WebhookConfigured=True`, "Admission is enforced by the generated ValidatingAdmissionPolicy.", and Argo CD's own check calls it Healthy. The fixture that expected Healthy from the override now holds that status, and the override's three plants give way to one, a health override that calls every ValidatingPolicy Healthy.
 
 ### Fixed
 
