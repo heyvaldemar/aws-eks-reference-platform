@@ -1,0 +1,99 @@
+{
+  "repository": "heyvaldemar/aws-eks-reference-platform",
+  "workflow": "eks-validation.yml",
+  "written_at": "2026-11-28T16:16:51Z",
+  "window_days": 30,
+  "days_with_runs": 5,
+  "green_days": 3,
+  "streak_days": 0,
+  "runs": 6,
+  "runs_passed": 3,
+  "scheduled_runs": 4,
+  "scheduled_passed": 2,
+  "scheduled_streak": 0,
+  "latest": {
+    "conclusion": "failure",
+    "event": "schedule",
+    "at": "2026-11-25T09:50:48Z",
+    "url": "https://github.com/heyvaldemar/aws-eks-reference-platform/actions/runs/45589271862",
+    "commit": "6afa85a",
+    "checks_passed": 13,
+    "checks_failed": 1,
+    "checks": [
+      {
+        "state": "PASS",
+        "name": "every Application Synced and Healthy",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "compliant-pod: admitted",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "no-memory-limit: refused by require-requests-limits",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "no-probes: refused by require-probes",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "privileged: refused by violates PodSecurity",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "tag-only-image: refused by require-image-digest",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "tenant-without-pss: refused by require-restricted-tenant",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "2 instances, every one IMDSv2-only with hop limit 1",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "demo.eks-validation.heyvaldemar.com is in the zone",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "the Gateway's certificate is Ready (DNS-01 answered in the zone)",
+        "job": "eks"
+      },
+      {
+        "state": "FAIL",
+        "name": "the load balancer (a51682e4e87f64336a061c62b9657292-1643690421.us-east-1.elb.amazonaws.com) does not serve a Let's Encrypt certificate for demo.eks-validation.heyvaldemar.com: no certificate",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "nodepools.karpenter.sh: default=True",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "ec2nodeclasses.karpenter.k8s.aws: default=True",
+        "job": "eks"
+      },
+      {
+        "state": "PASS",
+        "name": "backup eks-validation-1795602731 Completed, 9 objects in the run's Velero bucket",
+        "job": "eks"
+      }
+    ],
+    "measured": [
+      "run cost: about $0.24 (0.93 h, list prices)",
+      "run length: 0.93 h"
+    ]
+  }
+}
